@@ -1,0 +1,229 @@
+Build a modern web app called CHASSII — a social network and blog/forum platform for car enthusiasts.
+
+Concept:
+CHASSII is a blend of CarDomain, Rennlist, Instagram, and modern auto blogs. The core idea is that every user has a personal profile, but every car also has its own profile. Users can showcase their garage, document builds, write posts, ask questions, connect with nearby enthusiasts, and discover people with similar cars across the country.
+
+Brand style:
+Use a clean, premium automotive look inspired by Porsche, modern racing culture, and tech startups.
+Colors:
+- White / light background
+- Charcoal / dark navy text
+- Red accent
+- Minimal, clean, high-end UI
+- Rounded cards, large photos, fast mobile-first layout
+
+Core features:
+
+1. User accounts
+- Email/password login
+- Google login if easy to add
+- User profile with name, username, location, bio, profile photo
+- Privacy settings for location and garage visibility
+
+2. Garage system
+Each user can create a “Garage” page.
+Users can add multiple cars.
+Each car should have:
+- Make
+- Model
+- Year
+- Generation
+- Trim
+- Color
+- Mileage
+- Transmission
+- Engine
+- VIN optional/private
+- Main image
+- Photo gallery
+- Ownership story
+- Mod list
+- Maintenance log
+- Build timeline
+
+3. Car profiles
+Every car gets its own public profile page.
+Car pages should feel like mini portfolio pages.
+Include:
+- Hero image
+- Specs
+- Mods
+- Timeline
+- Photos
+- Owner info
+- Follow button
+- Comment section
+- Similar cars section
+
+4. Build timeline
+Users can post updates to a specific car:
+- Photos
+- Text
+- Parts installed
+- Maintenance performed
+- Track days
+- Road trips
+- Detailing
+- Problems/fixes
+- Before/after posts
+
+5. Modern forum/blog system
+Create a discussion system that is much cleaner than old forums.
+Users can create posts by:
+- General topic
+- Make
+- Model
+- Year
+- Generation
+- Tags
+- Location
+- Question, build update, guide, review, problem, event, marketplace-style listing
+
+Each post should support:
+- Comments/replies
+- Likes
+- Save/bookmark
+- Images
+- Tags
+- Search
+- Sorting by newest, popular, unanswered, local, following
+
+6. Discovery and networking
+Users should be able to find other enthusiasts:
+- Near me
+- Same city/state
+- Same make
+- Same model
+- Same generation
+- Similar mods
+- Across the country
+- Recently active
+- Most followed garages
+
+Include a map or location-based directory if practical.
+Location should be city/state level, not exact address.
+
+7. Feed
+Create a personalized home feed with:
+- Cars I follow
+- People I follow
+- Same make/model posts
+- Local posts
+- Build updates
+- Popular discussions
+- New garages
+
+8. Search and filters
+Add powerful filtering:
+- Make
+- Model
+- Year
+- Generation
+- Trim
+- Location
+- Tags
+- Mods
+- Recently updated
+- Most liked
+- Most commented
+
+9. Community features
+- Follow users
+- Follow cars
+- Like posts
+- Comment
+- Save posts
+- Direct messaging if feasible
+- Notifications for comments, likes, follows, and nearby posts
+
+10. Events
+Add a simple events section:
+- Cars and Coffee
+- Track days
+- Meets
+- Group drives
+Users can filter events by location and car type.
+
+11. AI/helper features if feasible
+Add a simple AI-style feature or placeholder:
+- “Find similar builds”
+- “Suggest tags”
+- “Summarize this discussion”
+- “Recommend posts based on your garage”
+This can be mocked initially if API integration is too much.
+
+Pages needed:
+- Landing page
+- Sign up / login
+- Dashboard/feed
+- My garage
+- Add car
+- Car profile page
+- User profile page
+- Explore garages
+- Discussions
+- Create post
+- Events
+- Search results
+- Settings
+
+Landing page copy:
+Headline:
+“Your garage deserves more than a forum thread.”
+
+Subheadline:
+“CHASSII is a modern community for car enthusiasts to showcase builds, document ownership, ask questions, and connect with drivers locally or nationwide.”
+
+Main CTA:
+“Create Your Garage”
+
+Secondary CTA:
+“Explore Builds”
+
+Suggested database tables:
+- users
+- profiles
+- cars
+- car_photos
+- car_mods
+- maintenance_logs
+- timeline_posts
+- forum_posts
+- comments
+- likes
+- follows
+- saved_posts
+- events
+- event_rsvps
+- notifications
+- messages if feasible
+
+Tech requirements:
+- Use a modern responsive design
+- Mobile-first
+- Use Supabase or built-in Replit database for auth and storage
+- Use image upload support
+- Make code clean and scalable
+- Add sample demo data for Porsche, BMW, Toyota, Ford, Nissan, Mercedes, and Ferrari
+- Use placeholder images if needed
+- Build the MVP fully functional, not just static pages
+
+Important UX:
+The site should not feel like an old forum.
+It should feel like a modern garage portfolio plus enthusiast network.
+The car should be the center of the experience.
+Users should be able to follow a car, not just a person.
+
+MVP priority:
+1. Authentication
+2. User profiles
+3. Add cars to garage
+4. Public car profile pages
+5. Feed
+6. Posts/discussions
+7. Search/filter by make/model/year/generation/location
+8. Follow/comment/like
+9. Clean landing page
+10. Mobile responsiveness
+
+Please build the first working version with polished UI, realistic dummy data, and clear navigation.

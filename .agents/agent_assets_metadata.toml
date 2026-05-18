@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "o6ugJGMKI2O68y19VMVKh"
+uri = "file://artifacts/chassii/public/hero.png"
+type = "image"
+title = "cinematic car hero image"
+
+[[generated]]
+id = "b9g8TCvSXwsgBlVpG-VJm"
+uri = "file://artifacts/chassii/public/showcase-1.png"
+type = "image"
+title = "car rolling on track"
+
+[[generated]]
+id = "rUKt44Ko46D_GQSBZZ1is"
+uri = "file://artifacts/chassii/public/showcase-2.png"
+type = "image"
+title = "classic sports car interior"

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" fill="none">
+  <path d="M40 20 L80 80 L120 20" stroke="#E31E24" stroke-width="8" stroke-linejoin="miter" fill="none" />
+  <text x="140" y="70" font-family="Inter, sans-serif" font-weight="900" font-size="48" fill="#1A1C29" letter-spacing="-1">CHASSII</text>
+  <circle cx="360" cy="70" r="6" fill="#E31E24" />
+</svg>

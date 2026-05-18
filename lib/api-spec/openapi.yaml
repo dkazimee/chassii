@@ -1,22 +1,36 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: CHASSII API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User profile operations
+  - name: cars
+    description: Car profile operations
+  - name: posts
+    description: Forum/blog post operations
+  - name: comments
+    description: Comment operations
+  - name: follows
+    description: Follow operations
+  - name: events
+    description: Events operations
+  - name: feed
+    description: Home feed operations
+  - name: search
+    description: Search and discovery
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +38,883 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Users ────────────────────────────────────────────────────────────
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateMe
+      tags: [users]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{userId}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get a user profile by ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /users/{userId}/cars:
+    get:
+      operationId: getUserCars
+      tags: [users]
+      summary: Get all cars for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of cars
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Car"
+
+  /users/{userId}/posts:
+    get:
+      operationId: getUserPosts
+      tags: [users]
+      summary: Get all posts by a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Post"
+
+  /users/{userId}/follow:
+    post:
+      operationId: followUser
+      tags: [follows]
+      summary: Follow a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Follow created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResult"
+    delete:
+      operationId: unfollowUser
+      tags: [follows]
+      summary: Unfollow a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unfollowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResult"
+
+  /users/{userId}/followers:
+    get:
+      operationId: getUserFollowers
+      tags: [follows]
+      summary: Get followers of a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of followers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+  /users/{userId}/following:
+    get:
+      operationId: getUserFollowing
+      tags: [follows]
+      summary: Get users that a user follows
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of following
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+  # ── Cars ────────────────────────────────────────────────────────────
+  /cars:
+    get:
+      operationId: listCars
+      tags: [cars]
+      summary: List cars with optional filters
+      parameters:
+        - name: make
+          in: query
+          schema:
+            type: string
+        - name: model
+          in: query
+          schema:
+            type: string
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: generation
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, popular, most_followed, recently_updated]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of cars
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Car"
+    post:
+      operationId: createCar
+      tags: [cars]
+      summary: Add a car to the authenticated user's garage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarInput"
+      responses:
+        "201":
+          description: Created car
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Car"
+
+  /cars/{carId}:
+    get:
+      operationId: getCar
+      tags: [cars]
+      summary: Get a car profile
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Car profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarDetail"
+    patch:
+      operationId: updateCar
+      tags: [cars]
+      summary: Update a car
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarUpdate"
+      responses:
+        "200":
+          description: Updated car
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Car"
+    delete:
+      operationId: deleteCar
+      tags: [cars]
+      summary: Delete a car
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /cars/{carId}/follow:
+    post:
+      operationId: followCar
+      tags: [follows]
+      summary: Follow a car
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Followed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResult"
+    delete:
+      operationId: unfollowCar
+      tags: [follows]
+      summary: Unfollow a car
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unfollowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResult"
+
+  /cars/{carId}/mods:
+    get:
+      operationId: getCarMods
+      tags: [cars]
+      summary: Get mods for a car
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of mods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CarMod"
+    post:
+      operationId: addCarMod
+      tags: [cars]
+      summary: Add a mod to a car
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarModInput"
+      responses:
+        "201":
+          description: Created mod
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarMod"
+
+  /cars/{carId}/timeline:
+    get:
+      operationId: getCarTimeline
+      tags: [cars]
+      summary: Get build timeline for a car
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Timeline entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimelineEntry"
+    post:
+      operationId: addTimelineEntry
+      tags: [cars]
+      summary: Add a timeline entry
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TimelineEntryInput"
+      responses:
+        "201":
+          description: Created timeline entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimelineEntry"
+
+  /cars/{carId}/similar:
+    get:
+      operationId: getSimilarCars
+      tags: [cars]
+      summary: Get similar cars (same make/model/gen)
+      parameters:
+        - name: carId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Similar cars
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Car"
+
+  # ── Posts ────────────────────────────────────────────────────────────
+  /posts:
+    get:
+      operationId: listPosts
+      tags: [posts]
+      summary: List posts with filters
+      parameters:
+        - name: make
+          in: query
+          schema:
+            type: string
+        - name: model
+          in: query
+          schema:
+            type: string
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, popular, unanswered, local, following]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Post"
+    post:
+      operationId: createPost
+      tags: [posts]
+      summary: Create a post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostInput"
+      responses:
+        "201":
+          description: Created post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+
+  /posts/{postId}:
+    get:
+      operationId: getPost
+      tags: [posts]
+      summary: Get a post with comments
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Post detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostDetail"
+    patch:
+      operationId: updatePost
+      tags: [posts]
+      summary: Update a post
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostUpdate"
+      responses:
+        "200":
+          description: Updated post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+    delete:
+      operationId: deletePost
+      tags: [posts]
+      summary: Delete a post
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /posts/{postId}/like:
+    post:
+      operationId: likePost
+      tags: [posts]
+      summary: Like a post
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Like toggled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResult"
+    delete:
+      operationId: unlikePost
+      tags: [posts]
+      summary: Unlike a post
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unliked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResult"
+
+  /posts/{postId}/save:
+    post:
+      operationId: savePost
+      tags: [posts]
+      summary: Save/bookmark a post
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveResult"
+    delete:
+      operationId: unsavePost
+      tags: [posts]
+      summary: Unsave a post
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unsaved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveResult"
+
+  /posts/{postId}/comments:
+    get:
+      operationId: getPostComments
+      tags: [comments]
+      summary: Get comments for a post
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: createComment
+      tags: [comments]
+      summary: Add a comment to a post
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  # ── Feed ────────────────────────────────────────────────────────────
+  /feed:
+    get:
+      operationId: getFeed
+      tags: [feed]
+      summary: Get personalized home feed
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Feed entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedItem"
+
+  # ── Events ────────────────────────────────────────────────────────────
+  /events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      summary: List events
+      parameters:
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+    post:
+      operationId: createEvent
+      tags: [events]
+      summary: Create an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventInput"
+      responses:
+        "201":
+          description: Created event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
+  /events/{eventId}/rsvp:
+    post:
+      operationId: rsvpEvent
+      tags: [events]
+      summary: RSVP to an event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: RSVP recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RsvpResult"
+
+  # ── Search & Discovery ────────────────────────────────────────────────
+  /search:
+    get:
+      operationId: search
+      tags: [search]
+      summary: Global search across cars, users, and posts
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, cars, users, posts]
+        - name: make
+          in: query
+          schema:
+            type: string
+        - name: model
+          in: query
+          schema:
+            type: string
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: location
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
+
+  /discover/garages:
+    get:
+      operationId: discoverGarages
+      tags: [search]
+      summary: Discover garages (most followed, nearby, recently active)
+      parameters:
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [most_followed, recently_active, nearby]
+        - name: make
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of users with garage info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserProfile"
+
+  /stats/summary:
+    get:
+      operationId: getStatsSummary
+      tags: [search]
+      summary: Get community stats summary (total cars, users, posts, top makes)
+      responses:
+        "200":
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsSummary"
+
+  /notifications:
+    get:
+      operationId: getNotifications
+      tags: [users]
+      summary: Get notifications for current user
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +925,680 @@ components:
       required:
         - status
 
+    User:
+      type: object
+      required: [id, clerkId, username, displayName, createdAt]
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: string
+        bio:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        coverUrl:
+          type: ["string", "null"]
+        isFollowingMe:
+          type: boolean
+        iFollowThem:
+          type: boolean
+        followerCount:
+          type: integer
+        followingCount:
+          type: integer
+        carCount:
+          type: integer
+        postCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    UserProfile:
+      type: object
+      required: [id, username, displayName, createdAt]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        bio:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        coverUrl:
+          type: ["string", "null"]
+        followerCount:
+          type: integer
+        followingCount:
+          type: integer
+        carCount:
+          type: integer
+        postCount:
+          type: integer
+        iFollowThem:
+          type: boolean
+        cars:
+          type: array
+          items:
+            $ref: "#/components/schemas/Car"
+        createdAt:
+          type: string
+          format: date-time
+
+    UserUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        bio:
+          type: string
+        location:
+          type: string
+        avatarUrl:
+          type: string
+        coverUrl:
+          type: string
+
+    Car:
+      type: object
+      required: [id, userId, make, model, year, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        make:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        generation:
+          type: ["string", "null"]
+        trim:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+        mileage:
+          type: ["integer", "null"]
+        transmission:
+          type: ["string", "null"]
+        engine:
+          type: ["string", "null"]
+        mainImageUrl:
+          type: ["string", "null"]
+        ownershipStory:
+          type: ["string", "null"]
+        isPublic:
+          type: boolean
+        followerCount:
+          type: integer
+        iFollow:
+          type: boolean
+        owner:
+          $ref: "#/components/schemas/User"
+        createdAt:
+          type: string
+          format: date-time
+
+    CarDetail:
+      type: object
+      required: [id, userId, make, model, year, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        make:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        generation:
+          type: ["string", "null"]
+        trim:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+        mileage:
+          type: ["integer", "null"]
+        transmission:
+          type: ["string", "null"]
+        engine:
+          type: ["string", "null"]
+        mainImageUrl:
+          type: ["string", "null"]
+        ownershipStory:
+          type: ["string", "null"]
+        isPublic:
+          type: boolean
+        followerCount:
+          type: integer
+        iFollow:
+          type: boolean
+        owner:
+          $ref: "#/components/schemas/User"
+        mods:
+          type: array
+          items:
+            $ref: "#/components/schemas/CarMod"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineEntry"
+        photos:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CarInput:
+      type: object
+      required: [make, model, year]
+      properties:
+        make:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        generation:
+          type: string
+        trim:
+          type: string
+        color:
+          type: string
+        mileage:
+          type: integer
+        transmission:
+          type: string
+        engine:
+          type: string
+        mainImageUrl:
+          type: string
+        ownershipStory:
+          type: string
+        isPublic:
+          type: boolean
+
+    CarUpdate:
+      type: object
+      properties:
+        make:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        generation:
+          type: string
+        trim:
+          type: string
+        color:
+          type: string
+        mileage:
+          type: integer
+        transmission:
+          type: string
+        engine:
+          type: string
+        mainImageUrl:
+          type: string
+        ownershipStory:
+          type: string
+        isPublic:
+          type: boolean
+
+    CarMod:
+      type: object
+      required: [id, carId, name, category, createdAt]
+      properties:
+        id:
+          type: integer
+        carId:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        brand:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        installedAt:
+          type: ["string", "null"]
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+
+    CarModInput:
+      type: object
+      required: [name, category]
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        brand:
+          type: string
+        notes:
+          type: string
+        installedAt:
+          type: string
+          format: date
+
+    TimelineEntry:
+      type: object
+      required: [id, carId, userId, type, title, createdAt]
+      properties:
+        id:
+          type: integer
+        carId:
+          type: integer
+        userId:
+          type: integer
+        type:
+          type: string
+          enum: [mod, maintenance, track_day, road_trip, detailing, problem_fix, build_update, photo]
+        title:
+          type: string
+        body:
+          type: ["string", "null"]
+        imageUrls:
+          type: array
+          items:
+            type: string
+        author:
+          $ref: "#/components/schemas/User"
+        createdAt:
+          type: string
+          format: date-time
+
+    TimelineEntryInput:
+      type: object
+      required: [type, title]
+      properties:
+        type:
+          type: string
+          enum: [mod, maintenance, track_day, road_trip, detailing, problem_fix, build_update, photo]
+        title:
+          type: string
+        body:
+          type: string
+        imageUrls:
+          type: array
+          items:
+            type: string
+
+    Post:
+      type: object
+      required: [id, userId, title, category, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        carId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        body:
+          type: string
+        category:
+          type: string
+          enum: [general, question, build_update, guide, review, problem, event, marketplace]
+        make:
+          type: ["string", "null"]
+        model:
+          type: ["string", "null"]
+        year:
+          type: ["integer", "null"]
+        generation:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        tags:
+          type: array
+          items:
+            type: string
+        imageUrls:
+          type: array
+          items:
+            type: string
+        likeCount:
+          type: integer
+        commentCount:
+          type: integer
+        isLiked:
+          type: boolean
+        isSaved:
+          type: boolean
+        author:
+          $ref: "#/components/schemas/User"
+        createdAt:
+          type: string
+          format: date-time
+
+    PostDetail:
+      type: object
+      required: [id, userId, title, category, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        carId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        body:
+          type: string
+        category:
+          type: string
+        make:
+          type: ["string", "null"]
+        model:
+          type: ["string", "null"]
+        year:
+          type: ["integer", "null"]
+        generation:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        tags:
+          type: array
+          items:
+            type: string
+        imageUrls:
+          type: array
+          items:
+            type: string
+        likeCount:
+          type: integer
+        commentCount:
+          type: integer
+        isLiked:
+          type: boolean
+        isSaved:
+          type: boolean
+        author:
+          $ref: "#/components/schemas/User"
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+        createdAt:
+          type: string
+          format: date-time
+
+    PostInput:
+      type: object
+      required: [title, body, category]
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        category:
+          type: string
+          enum: [general, question, build_update, guide, review, problem, event, marketplace]
+        carId:
+          type: integer
+        make:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        generation:
+          type: string
+        location:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        imageUrls:
+          type: array
+          items:
+            type: string
+
+    PostUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        imageUrls:
+          type: array
+          items:
+            type: string
+
+    Comment:
+      type: object
+      required: [id, postId, userId, body, createdAt]
+      properties:
+        id:
+          type: integer
+        postId:
+          type: integer
+        userId:
+          type: integer
+        parentId:
+          type: ["integer", "null"]
+        body:
+          type: string
+        likeCount:
+          type: integer
+        isLiked:
+          type: boolean
+        author:
+          $ref: "#/components/schemas/User"
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+        createdAt:
+          type: string
+          format: date-time
+
+    CommentInput:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+        parentId:
+          type: integer
+
+    FollowResult:
+      type: object
+      required: [following]
+      properties:
+        following:
+          type: boolean
+
+    LikeResult:
+      type: object
+      required: [liked, likeCount]
+      properties:
+        liked:
+          type: boolean
+        likeCount:
+          type: integer
+
+    SaveResult:
+      type: object
+      required: [saved]
+      properties:
+        saved:
+          type: boolean
+
+    RsvpResult:
+      type: object
+      required: [rsvpd]
+      properties:
+        rsvpd:
+          type: boolean
+
+    FeedItem:
+      type: object
+      required: [id, type, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [post, timeline_entry, new_car, new_follower]
+        post:
+          $ref: "#/components/schemas/Post"
+        timelineEntry:
+          $ref: "#/components/schemas/TimelineEntry"
+        car:
+          $ref: "#/components/schemas/Car"
+        actor:
+          $ref: "#/components/schemas/User"
+        createdAt:
+          type: string
+          format: date-time
+
+    Event:
+      type: object
+      required: [id, userId, title, type, date, location, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        type:
+          type: string
+          enum: [cars_and_coffee, track_day, meet, group_drive, other]
+        date:
+          type: string
+          format: date-time
+        location:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        rsvpCount:
+          type: integer
+        hasRsvpd:
+          type: boolean
+        organizer:
+          $ref: "#/components/schemas/User"
+        createdAt:
+          type: string
+          format: date-time
+
+    EventInput:
+      type: object
+      required: [title, type, date, location]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [cars_and_coffee, track_day, meet, group_drive, other]
+        date:
+          type: string
+          format: date-time
+        location:
+          type: string
+        imageUrl:
+          type: string
+
+    SearchResults:
+      type: object
+      required: [cars, users, posts]
+      properties:
+        cars:
+          type: array
+          items:
+            $ref: "#/components/schemas/Car"
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserProfile"
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Post"
+
+    StatsSummary:
+      type: object
+      required: [totalCars, totalUsers, totalPosts, topMakes]
+      properties:
+        totalCars:
+          type: integer
+        totalUsers:
+          type: integer
+        totalPosts:
+          type: integer
+        topMakes:
+          type: array
+          items:
+            type: object
+            required: [make, count]
+            properties:
+              make:
+                type: string
+              count:
+                type: integer
+        recentCars:
+          type: array
+          items:
+            $ref: "#/components/schemas/Car"
+        featuredGarages:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserProfile"
+
+    Notification:
+      type: object
+      required: [id, type, isRead, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [like, comment, follow, nearby_post, new_car]
+        isRead:
+          type: boolean
+        actor:
+          $ref: "#/components/schemas/User"
+        postId:
+          type: ["integer", "null"]
+        carId:
+          type: ["integer", "null"]
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
