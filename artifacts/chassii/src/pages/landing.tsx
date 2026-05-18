@@ -22,6 +22,11 @@ export default function LandingPage() {
         </div>
         
         <div className="relative pt-32 pb-20 sm:pt-40 sm:pb-24 lg:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto h-[80vh] flex flex-col justify-end">
+          <img
+            src="/chassii-logo.png"
+            alt="CHASSII — Your Cars. Your Story. Your Community."
+            className="w-56 sm:w-72 mb-8 drop-shadow-xl"
+          />
           <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-white max-w-3xl drop-shadow-md">
             Your garage deserves more than a forum thread.
           </h1>

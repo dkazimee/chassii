@@ -38,7 +38,7 @@ export default function NavBar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-              <img src="/logo.svg" alt="CHASSII" className="h-8 w-auto" />
+              <img src="/chassii-logo.png" alt="CHASSII" className="h-8 w-auto" />
             </Link>
             <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
               <Link href="/explore" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-primary text-sm font-medium">
