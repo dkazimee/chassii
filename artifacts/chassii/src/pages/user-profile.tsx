@@ -2,14 +2,31 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useAuth } from "@clerk/react";
 import { useGetUser, useGetUserCars, useGetUserPosts, useGetMe, useFollowUser, useUnfollowUser, getGetUserQueryKey, getGetUserCarsQueryKey, getGetUserPostsQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Users, Car, MessageSquare, Shield, Camera, Pencil } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { MapPin, Users, Car, MessageSquare, Shield, Camera, Pencil, MoreHorizontal, UserX, UserMinus, Ban } from "lucide-react";
 import { useLightbox } from "@/components/Lightbox";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +49,25 @@ export default function UserProfilePage() {
   const followUser = useFollowUser();
   const unfollowUser = useUnfollowUser();
   const lightbox = useLightbox();
+  const [blockDialog, setBlockDialog] = useState(false);
+
+  const blockUser = useMutation({
+    mutationFn: async () => {
+      const r = await fetch(`/api/users/${userId}/block`, { method: "POST", credentials: "include" });
+      if (!r.ok) throw new Error("Failed to block");
+      return r.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetUserQueryKey(userId) }),
+  });
+
+  const unblockUser = useMutation({
+    mutationFn: async () => {
+      const r = await fetch(`/api/users/${userId}/block`, { method: "DELETE", credentials: "include" });
+      if (!r.ok) throw new Error("Failed to unblock");
+      return r.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetUserQueryKey(userId) }),
+  });
 
   // Fetch admin status when signed in and viewing own profile
   useEffect(() => {
@@ -152,7 +188,6 @@ export default function UserProfilePage() {
                   Edit Profile
                 </Button>
               )}
-              {/* Admin Panel button — only visible to the admin */}
               {isAdmin && (
                 <Button
                   onClick={() => setLocation("/admin")}
@@ -163,7 +198,6 @@ export default function UserProfilePage() {
                   Admin Panel
                 </Button>
               )}
-              {/* Claim Admin — only shows when no admin exists yet and user is signed in */}
               {!isAdmin && noAdminYet && isSignedIn && (
                 <Button
                   onClick={claimAdmin}
@@ -175,15 +209,80 @@ export default function UserProfilePage() {
                   {claimingAdmin ? "Claiming…" : "Claim Admin"}
                 </Button>
               )}
-              {!isOwnProfile && (
-                <Button
-                  onClick={toggleFollow}
-                  variant={user.iFollowThem ? "outline" : "default"}
-                  className="rounded-full px-6"
-                  disabled={followUser.isPending || unfollowUser.isPending}
-                >
-                  {user.iFollowThem ? "Following" : "Follow"}
-                </Button>
+              {!isOwnProfile && isSignedIn && (
+                <>
+                  {/* Follow / Unfollow button — hidden if blocked */}
+                  {!(user as any).iBlockThem && (
+                    <Button
+                      onClick={toggleFollow}
+                      variant={user.iFollowThem ? "outline" : "default"}
+                      className="rounded-full px-6"
+                      disabled={followUser.isPending || unfollowUser.isPending}
+                    >
+                      {user.iFollowThem ? "Following" : "Follow"}
+                    </Button>
+                  )}
+
+                  {/* "…" actions dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" className="rounded-full h-10 w-10">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      {user.iFollowThem && (
+                        <DropdownMenuItem
+                          onClick={toggleFollow}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <UserMinus className="h-4 w-4" />
+                          Unfollow
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      {(user as any).iBlockThem ? (
+                        <DropdownMenuItem
+                          onClick={() => unblockUser.mutate()}
+                          disabled={unblockUser.isPending}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <Ban className="h-4 w-4" />
+                          Unblock
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={() => setBlockDialog(true)}
+                          className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600"
+                        >
+                          <Ban className="h-4 w-4" />
+                          Block
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Block confirmation dialog */}
+                  <AlertDialog open={blockDialog} onOpenChange={setBlockDialog}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Block {user.displayName}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          They won't be able to follow you or see your content. This will also remove any existing follow between you.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => { setBlockDialog(false); blockUser.mutate(); }}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Block
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
               )}
             </div>
           </div>

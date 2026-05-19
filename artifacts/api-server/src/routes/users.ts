@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import {
   usersTable,
   userFollowsTable,
+  userBlocksTable,
   carsTable,
   postsTable,
 } from "@workspace/db";
@@ -261,13 +262,20 @@ router.get("/users/:userId", async (req, res) => {
     const counts = await getUserCounts(userId);
 
     let iFollowThem = false;
+    let iBlockThem = false;
     if (clerkId) {
       const me = await db.query.usersTable.findFirst({ where: eq(usersTable.clerkId, clerkId) });
       if (me) {
-        const follow = await db.query.userFollowsTable.findFirst({
-          where: and(eq(userFollowsTable.followerId, me.id), eq(userFollowsTable.followingId, userId)),
-        });
+        const [follow, block] = await Promise.all([
+          db.query.userFollowsTable.findFirst({
+            where: and(eq(userFollowsTable.followerId, me.id), eq(userFollowsTable.followingId, userId)),
+          }),
+          db.query.userBlocksTable.findFirst({
+            where: and(eq(userBlocksTable.blockerId, me.id), eq(userBlocksTable.blockedId, userId)),
+          }),
+        ]);
         iFollowThem = !!follow;
+        iBlockThem = !!block;
       }
     }
 
@@ -275,6 +283,7 @@ router.get("/users/:userId", async (req, res) => {
 
     return res.json({
       ...formatUser(user, { ...counts, iFollowThem }),
+      iBlockThem,
       cars: cars.map(c => ({
         id: c.id, userId: c.userId, make: c.make, model: c.model, year: c.year,
         generation: c.generation, trim: c.trim, color: c.color, mileage: c.mileage,
@@ -379,6 +388,68 @@ router.delete("/users/:userId/follow", requireAuth(), async (req, res) => {
     return res.json({ following: false });
   } catch (err) {
     req.log.error({ err }, "Error unfollowing user");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/users/:userId/block
+router.post("/users/:userId/block", requireAuth(), async (req, res) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
+    const me = await getOrCreateUser(clerkId);
+    const targetId = parseInt(req.params.userId);
+    if (me.id === targetId) return res.status(400).json({ error: "Cannot block yourself" });
+
+    const existing = await db.query.userBlocksTable.findFirst({
+      where: and(eq(userBlocksTable.blockerId, me.id), eq(userBlocksTable.blockedId, targetId)),
+    });
+    if (!existing) {
+      await db.insert(userBlocksTable).values({ blockerId: me.id, blockedId: targetId });
+    }
+    // Also unfollow in both directions on block
+    await db.delete(userFollowsTable)
+      .where(and(eq(userFollowsTable.followerId, me.id), eq(userFollowsTable.followingId, targetId)));
+    await db.delete(userFollowsTable)
+      .where(and(eq(userFollowsTable.followerId, targetId), eq(userFollowsTable.followingId, me.id)));
+    return res.json({ blocked: true });
+  } catch (err) {
+    req.log.error({ err }, "Error blocking user");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /api/users/:userId/block
+router.delete("/users/:userId/block", requireAuth(), async (req, res) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
+    const me = await getOrCreateUser(clerkId);
+    const targetId = parseInt(req.params.userId);
+
+    await db.delete(userBlocksTable)
+      .where(and(eq(userBlocksTable.blockerId, me.id), eq(userBlocksTable.blockedId, targetId)));
+    return res.json({ blocked: false });
+  } catch (err) {
+    req.log.error({ err }, "Error unblocking user");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /api/users/:userId/follower — remove someone from your own followers
+router.delete("/users/:userId/follower", requireAuth(), async (req, res) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
+    const me = await getOrCreateUser(clerkId);
+    const followerId = parseInt(req.params.userId);
+
+    // The person to remove is following me — delete that row
+    await db.delete(userFollowsTable)
+      .where(and(eq(userFollowsTable.followerId, followerId), eq(userFollowsTable.followingId, me.id)));
+    return res.json({ removed: true });
+  } catch (err) {
+    req.log.error({ err }, "Error removing follower");
     return res.status(500).json({ error: "Internal server error" });
   }
 });
