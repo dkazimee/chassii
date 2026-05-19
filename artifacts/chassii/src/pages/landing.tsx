@@ -10,6 +10,27 @@ export default function LandingPage() {
 
   return (
     <div className="bg-white">
+      {/* Top bar */}
+      <div className="absolute top-0 inset-x-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-end gap-3">
+          <Button
+            variant="ghost"
+            className="text-white hover:bg-white/10 hover:text-white rounded-full font-semibold"
+            onClick={() => setLocation("/sign-in")}
+            data-testid="button-landing-sign-in"
+          >
+            Sign In
+          </Button>
+          <Button
+            className="rounded-full font-bold"
+            onClick={() => setLocation("/sign-up")}
+            data-testid="button-landing-sign-up"
+          >
+            Sign Up
+          </Button>
+        </div>
+      </div>
+
       {/* Hero Section */}
       <div className="relative">
         <div className="absolute inset-0 h-[80vh] w-full">
@@ -41,6 +62,16 @@ export default function LandingPage() {
               Explore Builds <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
+          <p className="mt-6 text-gray-300 text-sm">
+            Already have an account?{" "}
+            <button
+              onClick={() => setLocation("/sign-in")}
+              className="text-white font-semibold underline underline-offset-4 hover:text-primary"
+              data-testid="link-landing-hero-sign-in"
+            >
+              Sign in
+            </button>
+          </p>
         </div>
       </div>
 
