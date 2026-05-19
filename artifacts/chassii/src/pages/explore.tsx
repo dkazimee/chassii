@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, MapPin, Filter, Car as CarIcon } from "lucide-react";
+import { Search, MapPin, Filter, Car as CarIcon, Map as MapIcon, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ExplorePage() {
@@ -36,6 +36,25 @@ export default function ExplorePage() {
           </Button>
         </div>
       </div>
+
+      <section>
+        <Link href="/map">
+          <Card className="rounded-3xl overflow-hidden border-transparent shadow-sm hover:shadow-xl transition-all cursor-pointer group bg-gradient-to-br from-gray-900 via-gray-800 to-red-900 text-white">
+            <CardContent className="p-8 flex items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-white/20 transition-colors">
+                  <MapIcon className="h-7 w-7" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Browse on the Map</h2>
+                  <p className="text-gray-300 mt-1">See cars, garages, and events near you on an interactive map.</p>
+                </div>
+              </div>
+              <ArrowRight className="h-6 w-6 shrink-0 transition-transform group-hover:translate-x-1" />
+            </CardContent>
+          </Card>
+        </Link>
+      </section>
 
       <section>
         <div className="flex items-center justify-between mb-6">
