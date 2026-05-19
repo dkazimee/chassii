@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useAuth } from "@clerk/react";
-import { useGetUser, useGetUserCars, useGetUserPosts, useFollowUser, useUnfollowUser, getGetUserQueryKey, getGetUserCarsQueryKey, getGetUserPostsQueryKey } from "@workspace/api-client-react";
+import { useGetUser, useGetUserCars, useGetUserPosts, useGetMe, useFollowUser, useUnfollowUser, getGetUserQueryKey, getGetUserCarsQueryKey, getGetUserPostsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Users, Car, MessageSquare, Shield } from "lucide-react";
+import { MapPin, Users, Car, MessageSquare, Shield, Camera, Pencil } from "lucide-react";
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -25,6 +25,7 @@ export default function UserProfilePage() {
   const { data: user, isLoading: isUserLoading } = useGetUser(userId, { query: { enabled: !!userId, queryKey: getGetUserQueryKey(userId) } });
   const { data: cars, isLoading: isCarsLoading } = useGetUserCars(userId, { query: { enabled: !!userId, queryKey: getGetUserCarsQueryKey(userId) } });
   const { data: posts, isLoading: isPostsLoading } = useGetUserPosts(userId, { query: { enabled: !!userId, queryKey: getGetUserPostsQueryKey(userId) } });
+  const { data: me } = useGetMe({ query: { enabled: !!isSignedIn } });
 
   const followUser = useFollowUser();
   const unfollowUser = useUnfollowUser();
@@ -85,23 +86,53 @@ export default function UserProfilePage() {
   if (isUserLoading) return <div className="space-y-4"><Skeleton className="h-64 w-full" /><Skeleton className="h-96 w-full" /></div>;
   if (!user) return <div className="text-center py-20">User not found</div>;
 
-  const isOwnProfile = adminStatus !== null;
+  const isOwnProfile = !!me && me.id === user.id;
   const isAdmin = adminStatus?.isAdmin ?? false;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Profile Header */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="h-48 w-full bg-gradient-to-r from-gray-800 to-gray-900 relative">
+        <div className="h-48 w-full bg-gradient-to-r from-gray-800 to-gray-900 relative group">
           {user.coverUrl && <img src={user.coverUrl} alt="Cover" className="w-full h-full object-cover opacity-60" />}
+          {isOwnProfile && (
+            <Link
+              href="/settings"
+              className="absolute top-4 right-4 bg-black/50 backdrop-blur-md text-white text-xs font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+              title="Change cover photo"
+            >
+              <Camera className="h-3.5 w-3.5" /> Edit Cover
+            </Link>
+          )}
         </div>
         <div className="px-8 pb-8 relative">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 -mt-16 sm:-mt-20 mb-6">
-            <Avatar className="h-32 w-32 border-4 border-white shadow-md bg-white">
-              <AvatarImage src={user.avatarUrl || ''} />
-              <AvatarFallback className="text-4xl">{user.displayName?.charAt(0)}</AvatarFallback>
-            </Avatar>
+            <div className="relative group">
+              <Avatar className="h-32 w-32 border-4 border-white shadow-md bg-white">
+                <AvatarImage src={user.avatarUrl || ''} />
+                <AvatarFallback className="text-4xl">{user.displayName?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              {isOwnProfile && (
+                <Link
+                  href="/settings"
+                  className="absolute inset-0 rounded-full flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors"
+                  title="Change profile photo"
+                >
+                  <Camera className="h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+              )}
+            </div>
             <div className="flex flex-wrap gap-3 items-center">
+              {isOwnProfile && (
+                <Button
+                  onClick={() => setLocation("/settings")}
+                  variant="outline"
+                  className="rounded-full px-5 flex items-center gap-2"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit Profile
+                </Button>
+              )}
               {/* Admin Panel button — only visible to the admin */}
               {isAdmin && (
                 <Button
@@ -125,14 +156,16 @@ export default function UserProfilePage() {
                   {claimingAdmin ? "Claiming…" : "Claim Admin"}
                 </Button>
               )}
-              <Button
-                onClick={toggleFollow}
-                variant={user.iFollowThem ? "outline" : "default"}
-                className="rounded-full px-6"
-                disabled={followUser.isPending || unfollowUser.isPending}
-              >
-                {user.iFollowThem ? "Following" : "Follow"}
-              </Button>
+              {!isOwnProfile && (
+                <Button
+                  onClick={toggleFollow}
+                  variant={user.iFollowThem ? "outline" : "default"}
+                  className="rounded-full px-6"
+                  disabled={followUser.isPending || unfollowUser.isPending}
+                >
+                  {user.iFollowThem ? "Following" : "Follow"}
+                </Button>
+              )}
             </div>
           </div>
 
