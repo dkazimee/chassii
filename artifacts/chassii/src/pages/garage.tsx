@@ -13,11 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUploader } from "@/components/ImageUploader";
+import { CarCombobox } from "@/components/CarCombobox";
+import { CAR_MAKES, MODELS_BY_MAKE, CAR_YEARS } from "@/data/car-data";
 
 const MOD_CATEGORIES = [
   "Engine", "Exhaust", "Intake", "Turbo / Supercharger",
@@ -81,6 +83,9 @@ export default function GaragePage() {
       mainImageUrl: "", ownershipStory: "", isPublic: true,
     },
   });
+
+  const selectedMake = useWatch({ control: form.control, name: "make" }) as string;
+  const modelOptions = MODELS_BY_MAKE[selectedMake] ?? [];
 
   function addMod() {
     if (!modDraft.name.trim() || !modDraft.category) return;
@@ -179,21 +184,49 @@ export default function GaragePage() {
                   <FormField control={form.control} name="make" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Make <span className="text-red-500">*</span></FormLabel>
-                      <FormControl><Input placeholder="Porsche" {...field} /></FormControl>
+                      <FormControl>
+                        <CarCombobox
+                          options={CAR_MAKES}
+                          value={field.value}
+                          onChange={(val) => {
+                            field.onChange(val);
+                            form.setValue("model", "");
+                          }}
+                          placeholder="Select make…"
+                          searchPlaceholder="Search or type make…"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="model" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Model <span className="text-red-500">*</span></FormLabel>
-                      <FormControl><Input placeholder="911 GT3" {...field} /></FormControl>
+                      <FormControl>
+                        <CarCombobox
+                          options={modelOptions}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder={selectedMake ? "Select model…" : "Select make first"}
+                          searchPlaceholder="Search or type model…"
+                          disabled={!selectedMake}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="year" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Year <span className="text-red-500">*</span></FormLabel>
-                      <FormControl><Input type="number" {...field} /></FormControl>
+                      <FormControl>
+                        <CarCombobox
+                          options={CAR_YEARS}
+                          value={field.value ? String(field.value) : ""}
+                          onChange={(val) => field.onChange(Number(val))}
+                          placeholder="Select year…"
+                          searchPlaceholder="Search year…"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
