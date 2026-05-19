@@ -1,4 +1,5 @@
-import { useGetMe, useUpdateMe } from "@workspace/api-client-react";
+import { useGetMe, useUpdateMe, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   const updateMe = useUpdateMe();
   const { toast } = useToast();
   const { signOut } = useClerk();
+  const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -56,12 +58,31 @@ export default function SettingsPage() {
 
   function onSubmit(values: z.infer<typeof profileSchema>) {
     updateMe.mutate({ data: values }, {
-      onSuccess: () => {
+      onSuccess: async (updated) => {
+        // Update the cache immediately so the profile page reflects changes,
+        // then refetch in the background to sync any server-derived fields.
+        queryClient.setQueryData(getGetMeQueryKey(), updated);
+        await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: ["getUserByUsername"] });
         toast({ title: "Profile updated successfully" });
       },
-      onError: () => {
-        toast({ title: "Failed to update profile", variant: "destructive" });
+      onError: (err: any) => {
+        toast({
+          title: "Failed to update profile",
+          description: err?.message || "Please try again.",
+          variant: "destructive",
+        });
       }
+    });
+  }
+
+  function onInvalid(errors: Record<string, { message?: string }>) {
+    // Surface validation errors so the user knows why the button "did nothing".
+    const first = Object.values(errors)[0];
+    toast({
+      title: "Please fix the highlighted fields",
+      description: first?.message || "Some fields are invalid.",
+      variant: "destructive",
     });
   }
 
@@ -80,7 +101,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
 
               <div className="flex items-end gap-6">
                 <FormField
@@ -176,7 +197,7 @@ export default function SettingsPage() {
               />
 
               <div className="flex justify-end pt-4 border-t border-gray-100">
-                <Button type="submit" disabled={updateMe.isPending}>
+                <Button type="submit" disabled={updateMe.isPending} data-testid="button-save-profile">
                   {updateMe.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
