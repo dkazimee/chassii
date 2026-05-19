@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, MapPin, Users, ExternalLink, Search, Bot, RefreshCw, X } from "lucide-react";
+import { Calendar, MapPin, Users, ExternalLink, Search, Bot, X } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -37,21 +37,16 @@ export default function EventsPage() {
   const rsvpEvent = useRsvpEvent();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: adminInfo } = useQuery({
-    queryKey: ["admin", "me"],
-    queryFn: async () => {
-      const r = await fetch("/api/admin/me", { credentials: "include" });
-      if (!r.ok) return { isAdmin: false };
-      return (await r.json()) as { isAdmin: boolean };
-    },
-    retry: false,
-  });
-  const [isScraping, setIsScraping] = useState(false);
-
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
     return () => clearTimeout(t);
   }, [searchInput]);
+
+  useEffect(() => {
+    fetch("/api/admin/events/scrape", { method: "POST", credentials: "include" })
+      .then((r) => r.ok && queryClient.invalidateQueries({ queryKey: ["events"] }))
+      .catch(() => {});
+  }, []);
 
   const cityParam = cityFilter !== "all" ? cityFilter : "";
 
@@ -101,24 +96,6 @@ export default function EventsPage() {
     });
   };
 
-  async function handleScrape() {
-    setIsScraping(true);
-    try {
-      const r = await fetch("/api/admin/events/scrape", { method: "POST", credentials: "include" });
-      const json = await r.json();
-      if (!r.ok) throw new Error(json.error || "Scrape failed");
-      toast({
-        title: `Imported ${json.report.inserted} new events`,
-        description: `Scanned ${json.report.fetched} posts • ${json.report.skippedDuplicates} duplicates skipped`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["events"] });
-    } catch (err) {
-      toast({ title: "Scrape failed", description: String(err), variant: "destructive" });
-    } finally {
-      setIsScraping(false);
-    }
-  }
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -127,18 +104,6 @@ export default function EventsPage() {
           <p className="text-gray-500 mt-2">Local cars and coffee, track days, cruises — plus events auto-discovered from across the web.</p>
         </div>
         <div className="flex items-center gap-2">
-          {adminInfo?.isAdmin && (
-            <Button
-              variant="outline"
-              onClick={handleScrape}
-              disabled={isScraping}
-              data-testid="button-scrape-events"
-              className="rounded-full"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isScraping ? "animate-spin" : ""}`} />
-              {isScraping ? "Scanning…" : "Refresh from Web"}
-            </Button>
-          )}
           <SignedIn>
             <Button size="lg" className="rounded-full">Create Event</Button>
           </SignedIn>
@@ -251,7 +216,7 @@ export default function EventsPage() {
             <p className="mt-2 text-gray-500">
               {effectiveCity
                 ? `No upcoming events match "${effectiveCity}". Try clearing the filter.`
-                : "Check back later, create your own, or ask an admin to refresh from the web."}
+                : "Check back later or create your own event."}
             </p>
           </div>
         )}
