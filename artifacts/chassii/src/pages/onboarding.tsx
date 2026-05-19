@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ImageUploader } from "@/components/ImageUploader";
-import { Car } from "lucide-react";
+import { LocationDetectButton } from "@/components/LocationDetectButton";
+import { Car, MapPin } from "lucide-react";
 
 export default function OnboardingPage() {
   const [, setLocation] = useLocation();
@@ -17,6 +18,7 @@ export default function OnboardingPage() {
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [locationValue, setLocationValue] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,7 +36,7 @@ export default function OnboardingPage() {
 
     setIsSubmitting(true);
     updateMe.mutate(
-      { data: { displayName: displayName.trim(), username: username.trim(), bio, avatarUrl } },
+      { data: { displayName: displayName.trim(), username: username.trim(), bio, avatarUrl, location: locationValue.trim() || undefined } },
       {
         onSuccess: () => setLocation("/feed"),
         onError: (error: unknown) => {
@@ -105,6 +107,26 @@ export default function OnboardingPage() {
             </div>
             {usernameError && <p className="text-xs text-red-500">{usernameError}</p>}
             {!usernameError && username && <p className="text-xs text-green-600">@{username} looks good!</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="location" className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 text-primary" />
+              Location <span className="text-gray-400 font-normal">(optional)</span>
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="location"
+                placeholder="Your address or just your city"
+                value={locationValue}
+                onChange={(e) => setLocationValue(e.target.value)}
+                data-testid="input-onboarding-location"
+              />
+              <LocationDetectButton onDetected={(label) => setLocationValue(label)} />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Pin yourself on the community map so nearby members can find you. Enter a full address for a more accurate ~10 mile vicinity, or just a city if you prefer. <strong>Your exact address is never stored or shown</strong> — we always round to a wide area.
+            </p>
           </div>
 
           <div className="space-y-1.5">
