@@ -95,13 +95,19 @@ async function getOrCreateBotUser(): Promise<typeof usersTable.$inferSelect> {
     where: eq(usersTable.clerkId, "system:chassii-bot"),
   });
   if (existing) return existing;
-  const [created] = await db.insert(usersTable).values({
+  // Race-safe: if a concurrent scrape inserted first, conflict -> reselect.
+  const inserted = await db.insert(usersTable).values({
     clerkId: "system:chassii-bot",
     username: "chassii_bot",
     displayName: "CHASSII Events Bot",
     bio: "Auto-discovers car events from across the web so you don't have to.",
-  }).returning();
-  return created;
+  }).onConflictDoNothing({ target: usersTable.clerkId }).returning();
+  if (inserted[0]) return inserted[0];
+  const found = await db.query.usersTable.findFirst({
+    where: eq(usersTable.clerkId, "system:chassii-bot"),
+  });
+  if (!found) throw new Error("Failed to get or create bot user");
+  return found;
 }
 
 export type ScrapeReport = {
@@ -157,7 +163,7 @@ export async function scrapeRedditEvents(maxPosts = 40): Promise<ScrapeReport> {
       continue;
     }
     try {
-      await db.insert(eventsTable).values({
+      const inserted = await db.insert(eventsTable).values({
         userId: bot.id,
         title: extracted.title.slice(0, 200),
         description: (extracted.description || "").slice(0, 1000),
@@ -167,8 +173,12 @@ export async function scrapeRedditEvents(maxPosts = 40): Promise<ScrapeReport> {
         city: extracted.city.slice(0, 100),
         source: "reddit",
         sourceUrl,
-      }).onConflictDoNothing({ target: eventsTable.sourceUrl });
-      report.inserted++;
+      }).onConflictDoNothing({ target: eventsTable.sourceUrl }).returning({ id: eventsTable.id });
+      if (inserted.length > 0) {
+        report.inserted++;
+      } else {
+        report.skippedDuplicates++;
+      }
     } catch (err) {
       report.errors++;
       console.error("[scraper] insert failed", err);

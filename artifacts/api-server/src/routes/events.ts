@@ -29,7 +29,7 @@ function formatEvent(e: typeof eventsTable.$inferSelect, organizer: typeof users
 }
 
 // GET /api/events/cities — distinct cities with event counts (for filter dropdown)
-router.get("/events/cities", async (_req, res) => {
+router.get("/events/cities", async (req, res) => {
   try {
     const rows = await db.select({
       city: eventsTable.city,
@@ -59,7 +59,8 @@ router.get("/events", async (req, res) => {
     if (type && type.trim()) {
       filters.push(eq(eventsTable.type, type.trim()));
     }
-    if (!includePast) {
+    const showPast = includePast === "true" || includePast === "1";
+    if (!showPast) {
       filters.push(sql`${eventsTable.date} >= now() - interval '1 day'`);
     }
 
