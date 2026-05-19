@@ -12,8 +12,22 @@ import {
   carFollowsTable,
 } from "@workspace/db";
 import { eq, desc, sql, ne } from "drizzle-orm";
+import { scrapeRedditEvents } from "../lib/eventScraper";
 
 const router = Router();
+
+// POST /api/admin/events/scrape — scrape Reddit for car events and import them
+router.post("/admin/events/scrape", requireAuth(), async (req, res) => {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const report = await scrapeRedditEvents();
+    res.json({ success: true, report });
+  } catch (err) {
+    console.error("[admin] event scrape failed", err);
+    res.status(500).json({ error: "Scrape failed" });
+  }
+});
 
 async function getAdminUser(clerkId: string) {
   return db.query.usersTable.findFirst({

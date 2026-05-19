@@ -11,7 +11,10 @@ export const eventsTable = pgTable("events", {
   type: text("type").notNull().default("other"),
   date: timestamp("date", { withTimezone: true }).notNull(),
   location: text("location").notNull(),
+  city: text("city"),
   imageUrl: text("image_url"),
+  source: text("source"),
+  sourceUrl: text("source_url").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

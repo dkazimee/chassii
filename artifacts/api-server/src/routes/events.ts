@@ -2,7 +2,7 @@ import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { usersTable, eventsTable, eventRsvpsTable } from "@workspace/db";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, asc, ilike, isNotNull } from "drizzle-orm";
 import { getOrCreateUser, formatUser } from "./users";
 
 const router = Router();
@@ -18,23 +18,56 @@ function formatEvent(e: typeof eventsTable.$inferSelect, organizer: typeof users
     id: e.id, userId: e.userId,
     title: e.title, description: e.description ?? null,
     type: e.type, date: e.date, location: e.location,
+    city: e.city ?? null,
     imageUrl: e.imageUrl ?? null,
+    source: e.source ?? null,
+    sourceUrl: e.sourceUrl ?? null,
     rsvpCount, hasRsvpd,
     organizer: formatUser(organizer),
     createdAt: e.createdAt,
   };
 }
 
+// GET /api/events/cities — distinct cities with event counts (for filter dropdown)
+router.get("/events/cities", async (_req, res) => {
+  try {
+    const rows = await db.select({
+      city: eventsTable.city,
+      count: sql<number>`count(*)::int`,
+    })
+      .from(eventsTable)
+      .where(and(isNotNull(eventsTable.city), sql`${eventsTable.date} >= now()`))
+      .groupBy(eventsTable.city)
+      .orderBy(sql`count(*) desc`);
+    return res.json(rows.filter(r => r.city));
+  } catch (err) {
+    (req as any).log?.error?.({ err }, "Error listing event cities");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /api/events
 router.get("/events", async (req, res) => {
   try {
-    const { location, type, limit = "20" } = req.query as Record<string, string>;
+    const { city, type, limit = "30", includePast } = req.query as Record<string, string>;
     const { userId: clerkId } = getAuth(req);
+
+    const filters = [] as any[];
+    if (city && city.trim()) {
+      filters.push(ilike(eventsTable.city, `%${city.trim()}%`));
+    }
+    if (type && type.trim()) {
+      filters.push(eq(eventsTable.type, type.trim()));
+    }
+    if (!includePast) {
+      filters.push(sql`${eventsTable.date} >= now() - interval '1 day'`);
+    }
 
     const events = await db.select({ event: eventsTable, organizer: usersTable })
       .from(eventsTable)
       .innerJoin(usersTable, eq(usersTable.id, eventsTable.userId))
-      .orderBy(desc(eventsTable.date))
+      .where(filters.length ? and(...filters) : undefined)
+      .orderBy(asc(eventsTable.date))
       .limit(parseInt(limit));
 
     let meUser: typeof usersTable.$inferSelect | undefined;
