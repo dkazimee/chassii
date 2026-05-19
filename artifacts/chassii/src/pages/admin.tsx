@@ -12,7 +12,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Shield, Users, FileText, Calendar, Trash2, Ban, CheckCircle,
+  Shield, Users, FileText, Calendar, Trash2,
   MapPin, Car, MessageSquare, AlertTriangle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -24,7 +24,6 @@ interface AdminUser {
   avatarUrl: string | null;
   location: string | null;
   isAdmin: boolean;
-  isBlocked: boolean;
   carCount: number;
   postCount: number;
   createdAt: string;
@@ -104,15 +103,6 @@ export default function AdminPage() {
       .finally(() => setLoadingEvents(false));
   };
 
-  const handleBlockUser = async (userId: number, blocked: boolean) => {
-    await apiFetch(`/api/admin/users/${userId}/block`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blocked }),
-    });
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, isBlocked: blocked } : u));
-  };
-
   const handleDeleteUser = async (userId: number) => {
     await apiFetch(`/api/admin/users/${userId}`, { method: "DELETE" });
     setUsers(prev => prev.filter(u => u.id !== userId));
@@ -148,8 +138,6 @@ export default function AdminPage() {
     );
   }
 
-  const blockedCount = users.filter(u => u.isBlocked).length;
-
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       {/* Header */}
@@ -171,10 +159,6 @@ export default function AdminPage() {
           <div>
             <div className="text-2xl font-bold text-white">{posts.length || "—"}</div>
             <div className="text-xs text-gray-500 uppercase tracking-wider">Posts</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-red-400">{blockedCount}</div>
-            <div className="text-xs text-gray-500 uppercase tracking-wider">Blocked</div>
           </div>
         </div>
       </div>
@@ -204,7 +188,7 @@ export default function AdminPage() {
             [1,2,3].map(i => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
           ) : (
             users.map(user => (
-              <Card key={user.id} className={`rounded-2xl border ${user.isBlocked ? 'border-red-200 bg-red-50' : 'border-gray-100'} shadow-sm`}>
+              <Card key={user.id} className="rounded-2xl border border-gray-100 shadow-sm">
                 <CardContent className="p-4 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <Avatar className="h-12 w-12 shrink-0">
@@ -216,7 +200,6 @@ export default function AdminPage() {
                         <span className="font-bold text-gray-900">{user.displayName}</span>
                         <span className="text-gray-400 text-sm">@{user.username}</span>
                         {user.isAdmin && <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Admin</Badge>}
-                        {user.isBlocked && <Badge variant="destructive" className="text-xs">Blocked</Badge>}
                       </div>
                       <div className="flex gap-4 mt-1 text-xs text-gray-500 flex-wrap">
                         {user.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{user.location}</span>}
@@ -229,15 +212,6 @@ export default function AdminPage() {
 
                   {!user.isAdmin && (
                     <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={`rounded-full text-xs ${user.isBlocked ? 'border-green-300 text-green-700 hover:bg-green-50' : 'border-yellow-300 text-yellow-700 hover:bg-yellow-50'}`}
-                        onClick={() => handleBlockUser(user.id, !user.isBlocked)}
-                      >
-                        {user.isBlocked ? <><CheckCircle className="h-3 w-3 mr-1" /> Unblock</> : <><Ban className="h-3 w-3 mr-1" /> Block</>}
-                      </Button>
-
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm" className="rounded-full text-xs border-red-200 text-red-600 hover:bg-red-50">

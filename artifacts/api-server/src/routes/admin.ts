@@ -108,7 +108,6 @@ router.get("/admin/users", requireAuth(), async (req, res) => {
       avatarUrl: usersTable.avatarUrl,
       location: usersTable.location,
       isAdmin: usersTable.isAdmin,
-      isBlocked: usersTable.isBlocked,
       createdAt: usersTable.createdAt,
       carCount: sql<number>`(select count(*)::int from cars where cars.user_id = users.id)`,
       postCount: sql<number>`(select count(*)::int from posts where posts.user_id = users.id)`,
@@ -118,31 +117,6 @@ router.get("/admin/users", requireAuth(), async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch users" });
-  }
-});
-
-// PATCH /api/admin/users/:id/block — toggle block
-router.patch("/admin/users/:id/block", requireAuth(), async (req, res) => {
-  try {
-    const admin = await requireAdmin(req, res);
-    if (!admin) return;
-
-    const userId = Number(req.params.id);
-    const { blocked } = req.body as { blocked: boolean };
-
-    const target = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) });
-    if (!target) { res.status(404).json({ error: "User not found" }); return; }
-    if (target.isAdmin) { res.status(400).json({ error: "Cannot block another admin" }); return; }
-
-    const [updated] = await db.update(usersTable)
-      .set({ isBlocked: blocked })
-      .where(eq(usersTable.id, userId))
-      .returning();
-
-    res.json({ success: true, user: updated });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to update user" });
   }
 });
 
