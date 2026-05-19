@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
-import { Car, Wrench } from "lucide-react";
+import { Car, Wrench, Users, TrendingUp, Calendar, MapPin, MessageSquare, Heart } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PostActions } from "@/components/PostActions";
 import { FeedFilters, EMPTY_FILTERS, type FeedFilterValues } from "@/components/FeedFilters";
 import { useLightbox } from "@/components/Lightbox";
@@ -190,8 +191,8 @@ export default function FeedPage() {
   return (
     <>
     {lightbox.element}
-    <div className="max-w-3xl mx-auto">
-      <div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2">
         <Tabs defaultValue="following" className="w-full">
           <TabsList className="mb-6 w-full justify-start border-b rounded-none h-12 bg-transparent p-0">
             <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2 font-semibold">
@@ -251,8 +252,162 @@ export default function FeedPage() {
           </TabsContent>
         </Tabs>
       </div>
-      
+
+      <aside className="hidden lg:block">
+        <HomeSidebar />
+      </aside>
     </div>
     </>
+  );
+}
+
+function HomeSidebar() {
+  const { isSignedIn } = useAuth();
+  const { data, isLoading } = useQuery({
+    queryKey: ["home-sidebar"],
+    enabled: !!isSignedIn,
+    queryFn: async () => {
+      const r = await fetch("/api/home/sidebar", { credentials: "include" });
+      if (!r.ok) return null;
+      return (await r.json()) as {
+        suggestions: Array<{ id: number; username: string; displayName: string; avatarUrl: string | null; location: string | null; reason: string }>;
+        trending: Array<{ id: number; title: string; make: string | null; model: string | null; likeCount: number; commentCount: number; author: { displayName: string; avatarUrl: string | null } }>;
+        events: Array<{ id: number; title: string; date: string; location: string; city: string | null; type: string }>;
+        myCars: Array<{ id: number; make: string; model: string; year: number; mainImageUrl: string | null }>;
+      };
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 sticky top-6">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardHeader className="pb-3"><Skeleton className="h-5 w-32" /></CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  return (
+    <div className="space-y-6 sticky top-6">
+      {/* My Garage at a Glance */}
+      <Card>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Car className="h-4 w-4" /> My Garage</h3>
+          <Link href="/garage" className="text-xs text-primary hover:underline">View all</Link>
+        </CardHeader>
+        <CardContent>
+          {data.myCars.length === 0 ? (
+            <div className="text-sm text-gray-500">
+              <p>No cars yet.</p>
+              <Link href="/garage" className="text-primary hover:underline">Add your first car →</Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {data.myCars.slice(0, 4).map((c) => (
+                <Link key={c.id} href={`/cars/${c.id}`} className="flex items-center gap-3 hover:bg-gray-50 -mx-2 px-2 py-1.5 rounded-md transition-colors">
+                  <div className="h-10 w-10 rounded-md bg-gray-100 overflow-hidden flex-shrink-0">
+                    {c.mainImageUrl ? (
+                      <img src={c.mainImageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center"><Car className="h-5 w-5 text-gray-400" /></div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-gray-900 truncate">{c.year} {c.make} {c.model}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Who to Follow */}
+      {data.suggestions.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Users className="h-4 w-4" /> Who to Follow</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {data.suggestions.map((u) => (
+                <div key={u.id} className="flex items-start gap-3">
+                  <Link href={`/users/${u.id}`}>
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={u.avatarUrl || ""} />
+                      <AvatarFallback>{u.displayName.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/users/${u.id}`} className="text-sm font-medium text-gray-900 hover:underline block truncate">
+                      {u.displayName}
+                    </Link>
+                    <div className="text-xs text-gray-500 truncate">{u.reason}</div>
+                  </div>
+                  <Link href={`/users/${u.id}`}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs">View</Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Trending For Your Garage */}
+      {data.trending.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Trending For Your Garage</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {data.trending.map((p) => (
+                <Link key={p.id} href={`/posts/${p.id}`} className="block hover:bg-gray-50 -mx-2 px-2 py-1.5 rounded-md transition-colors">
+                  <div className="text-sm font-medium text-gray-900 line-clamp-2">{p.title}</div>
+                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-3">
+                    {(p.make || p.model) && <span>{[p.make, p.model].filter(Boolean).join(" ")}</span>}
+                    <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{p.likeCount}</span>
+                    <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{p.commentCount}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Upcoming Events Near You */}
+      {data.events.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Calendar className="h-4 w-4" /> Events Near You</h3>
+            <Link href="/events" className="text-xs text-primary hover:underline">See all</Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {data.events.map((e) => (
+                <Link key={e.id} href={`/events`} className="block hover:bg-gray-50 -mx-2 px-2 py-1.5 rounded-md transition-colors">
+                  <div className="text-sm font-medium text-gray-900 line-clamp-2">{e.title}</div>
+                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-3">
+                    <span>{new Date(e.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                    <span className="flex items-center gap-1 truncate"><MapPin className="h-3 w-3" />{e.city || e.location}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
