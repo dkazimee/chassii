@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useAuth } from "@clerk/react";
+import { useQuery } from "@tanstack/react-query";
 import { useGetFeed, useGetStatsSummary } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,8 +27,19 @@ function matchesFilters(item: any, f: FeedFilterValues): boolean {
 }
 
 export default function FeedPage() {
+  const { isSignedIn } = useAuth();
   const { data: feedData, isLoading } = useGetFeed();
-  const { data: stats } = useGetStatsSummary();
+  const { data: adminInfo } = useQuery({
+    queryKey: ["admin-me"],
+    enabled: !!isSignedIn,
+    queryFn: async () => {
+      const r = await fetch("/api/admin/me", { credentials: "include" });
+      if (!r.ok) return { isAdmin: false };
+      return (await r.json()) as { isAdmin: boolean };
+    },
+  });
+  const isAdmin = !!adminInfo?.isAdmin;
+  const { data: stats } = useGetStatsSummary({ query: { enabled: isAdmin } });
   const [filters, setFilters] = useState<FeedFilterValues>(EMPTY_FILTERS);
   const lightbox = useLightbox();
 
@@ -236,6 +249,7 @@ export default function FeedPage() {
         </Tabs>
       </div>
       
+      {isAdmin && (
       <div className="hidden lg:block space-y-6">
         <Card>
           <CardHeader className="pb-3">
@@ -277,6 +291,7 @@ export default function FeedPage() {
           </Card>
         )}
       </div>
+      )}
     </div>
     </>
   );
