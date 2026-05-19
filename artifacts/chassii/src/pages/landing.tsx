@@ -124,9 +124,9 @@ export default function LandingPage() {
               <img src="/showcase-1.png" alt="Track car" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Track Records & Build Journals</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Track Records & Garage Journeys</h3>
               <p className="text-lg text-gray-600 mb-6">
-                Document every mod, track day, and maintenance item on a beautifully designed timeline. Your car's history deserves more than scattered forum posts.
+                Document every mod, track day, road trip, and maintenance item on a beautifully designed timeline — whether you're wrenching, restoring, or just enjoying the drive. Your car's story deserves more than scattered forum posts.
               </p>
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center text-gray-700">
@@ -143,7 +143,7 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Button variant="outline" size="lg" className="rounded-full" onClick={() => setLocation("/explore")}>
-                View Build Journals
+                Explore Garage Journeys
               </Button>
             </div>
           </div>

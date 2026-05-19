@@ -139,7 +139,7 @@ export default function GaragePage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Garage</h1>
-          <p className="text-gray-500 mt-1">Manage your vehicles and build journals</p>
+          <p className="text-gray-500 mt-1">Manage your vehicles and their garage journeys</p>
         </div>
 
         <Dialog open={isAddCarOpen} onOpenChange={(open) => {
