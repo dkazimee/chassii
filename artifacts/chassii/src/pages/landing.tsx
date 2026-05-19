@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useGetStatsSummary } from "@workspace/api-client-react";
-import { ArrowRight, Car, Users, MessageSquare } from "lucide-react";
+import { ArrowRight, Car, Users, MessageSquare, Wrench, Zap, BookOpen, AlertTriangle } from "lucide-react";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
@@ -174,6 +174,142 @@ export default function LandingPage() {
             </div>
             <div className="order-1 lg:order-2 rounded-3xl overflow-hidden shadow-2xl aspect-[4/3]">
               <img src="/showcase-2.png" alt="Classic interior" className="w-full h-full object-cover" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Mechanic Section */}
+      <div className="py-24 bg-gray-900 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Left: copy */}
+            <div>
+              <div className="inline-flex items-center gap-2 bg-red-600/20 text-red-400 text-sm font-semibold px-4 py-2 rounded-full mb-6">
+                <Zap className="h-4 w-4" />
+                AI-Powered
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-6">
+                Meet your AI Mechanic.
+              </h2>
+              <p className="text-lg text-gray-400 mb-8">
+                Got a weird noise? Wondering if that mod is worth it? Your AI Mechanic knows your garage — ask anything and get answers grounded in your specific car's make, model, and year.
+              </p>
+              <ul className="space-y-5 mb-10">
+                <li className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-red-600/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Wrench className="h-5 w-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">Diagnose before you panic</p>
+                    <p className="text-gray-400 text-sm mt-0.5">Describe a symptom and get likely causes ranked by probability — before you call the shop.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-red-600/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <BookOpen className="h-5 w-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">Maintenance reminders that make sense</p>
+                    <p className="text-gray-400 text-sm mt-0.5">Ask what's due at your mileage — and get interval recommendations specific to your chassis.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-red-600/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <AlertTriangle className="h-5 w-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">Know your common issues</p>
+                    <p className="text-gray-400 text-sm mt-0.5">Every platform has known gremlins. Your AI Mechanic surfaces them so you're never caught off guard.</p>
+                  </div>
+                </li>
+              </ul>
+              <Button
+                size="lg"
+                className="rounded-full bg-red-600 hover:bg-red-700 text-white font-bold px-8"
+                onClick={() => setLocation("/sign-up")}
+              >
+                Try the AI Mechanic
+              </Button>
+            </div>
+
+            {/* Right: mock chat UI */}
+            <div className="relative">
+              {/* Glow */}
+              <div className="absolute -inset-4 bg-red-600/10 rounded-3xl blur-2xl pointer-events-none" />
+              <div className="relative bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-2xl">
+                {/* Chat header */}
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-700 bg-gray-800/80 backdrop-blur">
+                  <div className="h-9 w-9 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0">
+                    <Wrench className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">AI Mechanic</p>
+                    <p className="text-gray-400 text-xs">Knows your 1994 Toyota Supra</p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-green-400" />
+                    <span className="text-xs text-gray-400">Online</span>
+                  </div>
+                </div>
+
+                {/* Messages */}
+                <div className="p-5 space-y-4 min-h-[320px]">
+                  {/* User message */}
+                  <div className="flex justify-end">
+                    <div className="bg-red-600 text-white text-sm rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[80%]">
+                      My 2JZ has a slight ticking at idle when warm. Should I be worried?
+                    </div>
+                  </div>
+
+                  {/* AI response */}
+                  <div className="flex items-start gap-3">
+                    <div className="h-7 w-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Wrench className="h-3.5 w-3.5 text-red-400" />
+                    </div>
+                    <div className="bg-gray-700 text-gray-100 text-sm rounded-2xl rounded-bl-sm px-4 py-3 max-w-[85%] space-y-2">
+                      <p>A warm ticking on the 2JZ-GTE is most commonly one of three things:</p>
+                      <ol className="list-decimal list-inside space-y-1 text-gray-300">
+                        <li><span className="text-white font-medium">VVT-i solenoid</span> — the most common culprit on high-mileage Supras. Cheap fix.</li>
+                        <li><span className="text-white font-medium">Valve clearance</span> — check if you're past 60k since your last adjustment.</li>
+                        <li><span className="text-white font-medium">Oil pressure</span> — less likely, but worth checking with a gauge.</li>
+                      </ol>
+                      <p className="text-gray-400 text-xs pt-1">I'd start with the solenoid screen. Want a step-by-step?</p>
+                    </div>
+                  </div>
+
+                  {/* User follow-up */}
+                  <div className="flex justify-end">
+                    <div className="bg-red-600 text-white text-sm rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[80%]">
+                      Yes, walk me through cleaning it.
+                    </div>
+                  </div>
+
+                  {/* Typing indicator */}
+                  <div className="flex items-start gap-3">
+                    <div className="h-7 w-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Wrench className="h-3.5 w-3.5 text-red-400" />
+                    </div>
+                    <div className="bg-gray-700 rounded-2xl rounded-bl-sm px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Input bar */}
+                <div className="px-5 pb-5">
+                  <div className="flex items-center gap-3 bg-gray-700 rounded-2xl px-4 py-3 border border-gray-600">
+                    <span className="text-gray-400 text-sm flex-1">Ask about your car…</span>
+                    <div className="h-7 w-7 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0">
+                      <ArrowRight className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
