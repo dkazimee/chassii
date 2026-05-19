@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser } from "@clerk/react";
 import { SignedIn, SignedOut } from "@/components/auth/ConditionalAuth";
-import { Search, Bell, Menu, X, Car, User, Settings, LogOut, Shield } from "lucide-react";
+import { Search, Bell, Menu, X, Car, User, Settings, LogOut, Shield, Rss } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -53,6 +53,16 @@ export default function NavBar() {
               <img src="/chassii-logo.png" alt="CHASSII" className="h-8 w-auto" />
             </Link>
             <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
+              {user && (
+                <>
+                  <Link href="/feed" className="text-gray-500 hover:text-gray-900 inline-flex items-center gap-1.5 px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium" data-testid="link-feed-nav">
+                    <Rss className="h-4 w-4" /> Feed
+                  </Link>
+                  <Link href="/garage" className="text-gray-500 hover:text-gray-900 inline-flex items-center gap-1.5 px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium" data-testid="link-garage-nav">
+                    <Car className="h-4 w-4" /> My Garage
+                  </Link>
+                </>
+              )}
               <Link href="/explore" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-primary text-sm font-medium">
                 Explore
               </Link>
@@ -163,6 +173,16 @@ export default function NavBar() {
       {isMobileMenuOpen && (
         <div className="sm:hidden border-t border-gray-200">
           <div className="pt-2 pb-3 space-y-1">
+            {user && (
+              <>
+                <Link href="/feed" className="pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2">
+                  <Rss className="h-4 w-4" /> Feed
+                </Link>
+                <Link href="/garage" className="pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2">
+                  <Car className="h-4 w-4" /> My Garage
+                </Link>
+              </>
+            )}
             <Link href="/explore" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">
               Explore
             </Link>
