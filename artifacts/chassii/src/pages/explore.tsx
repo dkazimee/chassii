@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useDiscoverGarages, useListCars } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,31 +10,40 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ExplorePage() {
   const [searchTerm, setSearchTerm] = useState("");
-  
+  const [, setLocation] = useLocation();
+
   const { data: garages, isLoading: isGaragesLoading } = useDiscoverGarages({ limit: 6, sort: 'most_followed' });
   const { data: cars, isLoading: isCarsLoading } = useListCars({ limit: 12, sort: 'popular' });
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchTerm.trim();
+    if (!q) return;
+    setLocation(`/search?q=${encodeURIComponent(q)}`);
+  };
 
   return (
     <div className="space-y-12">
       <div className="text-center max-w-3xl mx-auto space-y-6">
         <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">Explore the Community</h1>
         <p className="text-xl text-gray-500">Discover incredible builds, connect with enthusiasts, and get inspired.</p>
-        
-        <div className="flex max-w-xl mx-auto items-center gap-2">
+
+        <form onSubmit={submitSearch} className="flex max-w-xl mx-auto items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <Input 
-              type="search" 
-              placeholder="Search makes, models, users..." 
+            <Input
+              type="search"
+              placeholder="Search makes, models, users..."
               className="pl-10 h-12 text-lg rounded-full border-gray-300 focus:border-primary bg-white shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              data-testid="input-explore-search"
             />
           </div>
-          <Button size="icon" variant="outline" className="h-12 w-12 rounded-full shrink-0">
-            <Filter className="h-5 w-5" />
+          <Button type="submit" size="icon" className="h-12 w-12 rounded-full shrink-0" data-testid="button-explore-search">
+            <Search className="h-5 w-5" />
           </Button>
-        </div>
+        </form>
       </div>
 
       <section>
