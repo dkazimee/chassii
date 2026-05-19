@@ -51,7 +51,7 @@ export default function LandingPage() {
               Create Your Garage
             </Button>
             <Button size="lg" variant="outline" className="text-lg px-8 py-6 rounded-full font-bold" onClick={() => setLocation("/explore")}>
-              Explore Builds <ArrowRight className="ml-2 h-5 w-5" />
+              Browse the Garage <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
           <p className="mt-6 text-gray-600 text-sm">
