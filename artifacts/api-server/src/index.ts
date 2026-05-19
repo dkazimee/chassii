@@ -38,4 +38,5 @@ app.listen(port, (err) => {
 
   setInterval(scheduledScrape, SIX_HOURS_MS);
   logger.info("[scheduler] Auto-scrape scheduled every 6 hours");
+  scheduledScrape();
 });
