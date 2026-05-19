@@ -1,6 +1,7 @@
 import { useParams } from "wouter";
+import { useState } from "react";
 import { 
-  useGetCar, useGetCarMods, useGetCarTimeline,
+  useGetCar, useGetCarMods, useGetCarTimeline, useGetMe,
   useFollowCar, useUnfollowCar, getGetCarQueryKey, getGetCarModsQueryKey, getGetCarTimelineQueryKey
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,6 +15,9 @@ import { Link } from "wouter";
 import { MapPin, Wrench, Settings, ChevronRight, Bot } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import AIMechanicChat from "@/components/AIMechanicChat";
+import { AddTimelineEntryDialog } from "@/components/AddTimelineEntryDialog";
+import { TIMELINE_TYPES, TIMELINE_TYPE_MAP } from "@/data/timeline-types";
+import { cn } from "@/lib/utils";
 
 export default function CarDetailPage() {
   const params = useParams();
@@ -23,9 +27,18 @@ export default function CarDetailPage() {
   const { data: car, isLoading: isCarLoading } = useGetCar(carId, { query: { enabled: !!carId, queryKey: getGetCarQueryKey(carId) } });
   const { data: mods, isLoading: isModsLoading } = useGetCarMods(carId, { query: { enabled: !!carId, queryKey: getGetCarModsQueryKey(carId) } });
   const { data: timeline, isLoading: isTimelineLoading } = useGetCarTimeline(carId, { query: { enabled: !!carId, queryKey: getGetCarTimelineQueryKey(carId) } });
-  
+  const { data: me } = useGetMe();
+
+  const [typeFilter, setTypeFilter] = useState<string | "all">("all");
+
   const followCar = useFollowCar();
   const unfollowCar = useUnfollowCar();
+
+  const isOwner = !!me && !!car?.owner && me.id === car.owner.id;
+  const filteredTimeline = (timeline ?? []).filter(
+    (e) => typeFilter === "all" || e.type === typeFilter,
+  );
+  const typesUsed = new Set((timeline ?? []).map((e) => e.type));
 
   const toggleFollow = () => {
     if (car?.iFollow) {
@@ -95,7 +108,7 @@ export default function CarDetailPage() {
                 disabled={followCar.isPending || unfollowCar.isPending}
                 className={`rounded-full font-bold px-6 ${car.iFollow ? 'bg-white/10 text-white border-white/20 hover:bg-white/20' : ''}`}
               >
-                {car.iFollow ? "Following" : "Follow Build"}
+                {car.iFollow ? "Following" : "Follow"}
               </Button>
             </div>
           </div>
@@ -105,13 +118,13 @@ export default function CarDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           {/* Tabs: Story + Timeline | AI Mechanic */}
-          <Tabs defaultValue="build" className="w-full">
+          <Tabs defaultValue="journal" className="w-full">
             <TabsList className="w-full justify-start border-b border-gray-200 rounded-none bg-transparent p-0 mb-6 h-auto">
               <TabsTrigger
-                value="build"
+                value="journal"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 pb-3 pt-1 text-base font-semibold"
               >
-                Build
+                Journal
               </TabsTrigger>
               <TabsTrigger
                 value="ai-mechanic"
@@ -122,7 +135,7 @@ export default function CarDetailPage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="build" className="mt-0 space-y-8">
+            <TabsContent value="journal" className="mt-0 space-y-8">
               {/* Ownership Story */}
               {car.ownershipStory && (
                 <section>
@@ -135,38 +148,86 @@ export default function CarDetailPage() {
 
               {/* Timeline */}
               <section>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Build Timeline</h2>
-                  <Button variant="outline" size="sm" className="rounded-full">View All</Button>
+                <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                  <h2 className="text-2xl font-bold text-gray-900">Timeline</h2>
+                  {isOwner && <AddTimelineEntryDialog carId={carId} />}
                 </div>
-                
+
+                {/* Type filter chips */}
+                {timeline && timeline.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setTypeFilter("all")}
+                      className={cn(
+                        "text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors",
+                        typeFilter === "all"
+                          ? "bg-gray-900 text-white border-gray-900"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                      )}
+                    >
+                      All
+                    </button>
+                    {TIMELINE_TYPES.filter(t => typesUsed.has(t.value)).map(t => {
+                      const active = typeFilter === t.value;
+                      const Icon = t.icon;
+                      return (
+                        <button
+                          type="button"
+                          key={t.value}
+                          onClick={() => setTypeFilter(t.value)}
+                          className={cn(
+                            "text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1.5",
+                            active
+                              ? "bg-gray-900 text-white border-gray-900"
+                              : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                          )}
+                        >
+                          <Icon className="h-3 w-3" /> {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
                   {isTimelineLoading ? (
                     [1,2].map(i => <Skeleton key={i} className="h-40 w-full" />)
-                  ) : timeline && timeline.length > 0 ? (
-                    timeline.map((entry) => (
-                      <div key={entry.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-red-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
-                          <Wrench className="h-4 w-4 text-white" />
-                        </div>
-                        <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow">
-                          <div className="flex items-center justify-between mb-1">
-                            <Badge variant="outline" className="text-xs font-semibold uppercase tracking-wider text-gray-500">{entry.type.replace('_', ' ')}</Badge>
-                            <time className="text-sm text-gray-400">{formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}</time>
+                  ) : filteredTimeline.length > 0 ? (
+                    filteredTimeline.map((entry) => {
+                      const meta = TIMELINE_TYPE_MAP[entry.type] ?? TIMELINE_TYPE_MAP.maintenance;
+                      const Icon = meta.icon;
+                      return (
+                        <div key={entry.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                          <div className={cn("flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10", meta.colorClass)}>
+                            <Icon className="h-4 w-4 text-white" />
                           </div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-2">{entry.title}</h3>
-                          {entry.body && <p className="text-gray-600 mb-3 text-sm">{entry.body}</p>}
-                          {entry.imageUrls && entry.imageUrls.length > 0 && (
-                            <div className="mt-3 rounded-xl overflow-hidden">
-                              <img src={entry.imageUrls[0]} alt="Timeline update" className="w-full h-48 object-cover" />
+                          <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-1">
+                              <Badge variant="outline" className={cn("text-xs font-semibold uppercase tracking-wider", meta.badgeClass)}>{meta.label}</Badge>
+                              <time className="text-sm text-gray-400">{formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}</time>
                             </div>
-                          )}
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">{entry.title}</h3>
+                            {entry.body && <p className="text-gray-600 mb-3 text-sm whitespace-pre-wrap">{entry.body}</p>}
+                            {entry.imageUrls && entry.imageUrls.length > 0 && (
+                              <div className="mt-3 rounded-xl overflow-hidden">
+                                <img src={entry.imageUrls[0]} alt={entry.title} className="w-full h-48 object-cover" />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
+                  ) : timeline && timeline.length > 0 ? (
+                    <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200 z-10 relative">
+                      <p className="text-gray-500">No entries match this filter.</p>
+                    </div>
                   ) : (
                     <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200 z-10 relative">
                       <p className="text-gray-500">No timeline entries yet.</p>
+                      {isOwner && (
+                        <p className="text-sm text-gray-400 mt-2">Document maintenance, mods, track days, road trips, and more.</p>
+                      )}
                     </div>
                   )}
                 </div>
