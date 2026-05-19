@@ -51,6 +51,9 @@ export default function NavBar() {
               <Link href="/events" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium">
                 Events
               </Link>
+              <Link href="/map" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium" data-testid="link-map-nav">
+                Map
+              </Link>
             </div>
           </div>
           

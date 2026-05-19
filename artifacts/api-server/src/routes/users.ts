@@ -7,9 +7,38 @@ import {
   carsTable,
   postsTable,
 } from "@workspace/db";
-import { eq, and, sql, desc, ne } from "drizzle-orm";
+import { eq, and, sql, desc, ne, isNotNull } from "drizzle-orm";
 
 const router = Router();
+
+const NOMINATIM_UA = "CHASSII Social Network (https://chassii-social-network.replit.app)";
+
+// Quantize coords to ~1km grid (2 decimal places) so a member's exact home/work
+// address is never exposed even if they accidentally enter a street address.
+function fuzzCoord(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+async function geocodeLocation(query: string): Promise<{ lat: number; lon: number } | null> {
+  try {
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.searchParams.set("q", query);
+    url.searchParams.set("format", "json");
+    url.searchParams.set("limit", "1");
+    const res = await fetch(url.toString(), {
+      headers: { "User-Agent": NOMINATIM_UA },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as Array<{ lat: string; lon: string }>;
+    if (!data.length) return null;
+    const lat = parseFloat(data[0].lat);
+    const lon = parseFloat(data[0].lon);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
+    return { lat: fuzzCoord(lat), lon: fuzzCoord(lon) };
+  } catch {
+    return null;
+  }
+}
 
 function formatUser(u: typeof usersTable.$inferSelect, extra?: {
   iFollowThem?: boolean;
@@ -104,11 +133,29 @@ router.patch("/users/me", requireAuth(), async (req, res) => {
       }
     }
 
+    let latitude: number | null | undefined = undefined;
+    let longitude: number | null | undefined = undefined;
+    if (location !== undefined && location !== user.location) {
+      const trimmed = (location ?? "").trim();
+      if (!trimmed) {
+        latitude = null;
+        longitude = null;
+      } else {
+        const geo = await geocodeLocation(trimmed);
+        // Always write coords — null them out if geocode fails so stale
+        // coordinates from a previous location are not retained.
+        latitude = geo ? geo.lat : null;
+        longitude = geo ? geo.lon : null;
+      }
+    }
+
     const [updated] = await db.update(usersTable)
       .set({
         ...(displayName !== undefined && { displayName }),
         ...(bio !== undefined && { bio }),
         ...(location !== undefined && { location }),
+        ...(latitude !== undefined && { latitude }),
+        ...(longitude !== undefined && { longitude }),
         ...(avatarUrl !== undefined && { avatarUrl }),
         ...(coverUrl !== undefined && { coverUrl }),
         ...(username !== undefined && { username }),
@@ -120,6 +167,81 @@ router.patch("/users/me", requireAuth(), async (req, res) => {
     return res.json(formatUser(updated, counts));
   } catch (err) {
     req.log.error({ err }, "Error updating me");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/users/map - returns all users with coordinates + their public cars
+router.get("/users/map", async (req, res) => {
+  try {
+    const users = await db.select().from(usersTable).where(
+      and(
+        eq(usersTable.isPublicLocation, true),
+        isNotNull(usersTable.latitude),
+        isNotNull(usersTable.longitude),
+      ),
+    );
+    const userIds = users.map(u => u.id);
+    const cars = userIds.length
+      ? await db.select().from(carsTable).where(eq(carsTable.isPublic, true))
+      : [];
+    const carsByUser = new Map<number, typeof cars>();
+    for (const c of cars) {
+      if (!userIds.includes(c.userId)) continue;
+      const list = carsByUser.get(c.userId) ?? [];
+      list.push(c);
+      carsByUser.set(c.userId, list);
+    }
+    return res.json(users.map(u => ({
+      id: u.id,
+      username: u.username,
+      displayName: u.displayName,
+      avatarUrl: u.avatarUrl ?? null,
+      location: u.location ?? null,
+      latitude: u.latitude,
+      longitude: u.longitude,
+      cars: (carsByUser.get(u.id) ?? []).map(c => ({
+        id: c.id, make: c.make, model: c.model, year: c.year,
+        mainImageUrl: c.mainImageUrl ?? null,
+      })),
+    })));
+  } catch (err) {
+    req.log.error({ err }, "Error getting map users");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/reverse-geocode - given lat/lon, return city/neighborhood label
+router.post("/reverse-geocode", requireAuth(), async (req, res) => {
+  try {
+    const lat = Number(req.body?.lat);
+    const lon = Number(req.body?.lon);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) {
+      return res.status(400).json({ error: "lat and lon required" });
+    }
+    const url = new URL("https://nominatim.openstreetmap.org/reverse");
+    url.searchParams.set("lat", String(lat));
+    url.searchParams.set("lon", String(lon));
+    url.searchParams.set("format", "json");
+    url.searchParams.set("zoom", "12");
+    const r = await fetch(url.toString(), {
+      headers: { "User-Agent": NOMINATIM_UA },
+    });
+    if (!r.ok) return res.status(502).json({ error: "Reverse geocode failed" });
+    const data = (await r.json()) as {
+      address?: {
+        neighbourhood?: string; suburb?: string; city?: string; town?: string;
+        village?: string; county?: string; state?: string; country?: string;
+      };
+      display_name?: string;
+    };
+    const a = data.address ?? {};
+    const city = a.city || a.town || a.village || a.suburb || a.neighbourhood || a.county || "";
+    const region = a.state || a.country || "";
+    const label = [city, region].filter(Boolean).join(", ") || data.display_name || "";
+    return res.json({ label, lat, lon });
+  } catch (err) {
+    req.log.error({ err }, "Error reverse geocoding");
     return res.status(500).json({ error: "Internal server error" });
   }
 });

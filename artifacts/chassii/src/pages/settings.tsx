@@ -11,6 +11,8 @@ import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useClerk } from "@clerk/react";
 import { ImageUploader } from "@/components/ImageUploader";
+import { Locate, MapPin } from "lucide-react";
+import { useState } from "react";
 
 const profileSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
@@ -19,6 +21,57 @@ const profileSchema = z.object({
   avatarUrl: z.string().optional(),
   coverUrl: z.string().optional(),
 });
+
+function LocationDetectButton({ onDetected }: { onDetected: (label: string) => void }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  async function handleClick() {
+    if (!("geolocation" in navigator)) {
+      toast({ title: "Geolocation not supported by this browser", variant: "destructive" });
+      return;
+    }
+    setIsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const r = await fetch("/api/reverse-geocode", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          });
+          if (!r.ok) throw new Error(await r.text());
+          const { label } = await r.json();
+          if (label) onDetected(label);
+          else toast({ title: "Could not determine your area", variant: "destructive" });
+        } catch (err) {
+          toast({ title: "Lookup failed", description: String(err), variant: "destructive" });
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      (err) => {
+        setIsLoading(false);
+        toast({ title: "Location permission denied", description: err.message, variant: "destructive" });
+      },
+      { timeout: 8000 },
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="default"
+      onClick={handleClick}
+      disabled={isLoading}
+      data-testid="button-detect-location"
+      title="Use my current location"
+    >
+      <Locate className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+    </Button>
+  );
+}
 
 export default function SettingsPage() {
   const { data: user, isLoading } = useGetMe();
@@ -151,8 +204,23 @@ export default function SettingsPage() {
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl><Input placeholder="City, State" {...field} /></FormControl>
+                    <FormLabel className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      Location
+                    </FormLabel>
+                    <FormControl>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Neighborhood, City, or City, State"
+                          {...field}
+                          data-testid="input-location"
+                        />
+                        <LocationDetectButton onDetected={(label) => form.setValue("location", label, { shouldDirty: true })} />
+                      </div>
+                    </FormControl>
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      Used to place you on the community map. A general neighborhood or city is enough — no street address needed.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

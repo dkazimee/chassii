@@ -16,6 +16,7 @@ import NavBar from "@/components/layout/NavBar";
 import PostDetailPage from "@/pages/post-detail";
 import CreatePostPage from "@/pages/create-post";
 import EventsPage from "@/pages/events";
+import MapPage from "@/pages/map";
 import SearchPage from "@/pages/search";
 import SettingsPage from "@/pages/settings";
 import UserProfilePage from "@/pages/user-profile";
@@ -164,6 +165,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/explore"><Layout><ExplorePage /></Layout></Route>
           <Route path="/discussions"><Layout><DiscussionsPage /></Layout></Route>
           <Route path="/events"><Layout><EventsPage /></Layout></Route>
+          <Route path="/map"><Layout><MapPage /></Layout></Route>
           <Route path="/search"><Layout><SearchPage /></Layout></Route>
           <Route path="/posts/:postId"><Layout><PostDetailPage /></Layout></Route>
           <Route path="/create-post"><Layout><ProtectedRoute component={CreatePostPage} /></Layout></Route>

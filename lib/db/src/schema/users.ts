@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -9,6 +9,8 @@ export const usersTable = pgTable("users", {
   displayName: text("display_name").notNull(),
   bio: text("bio"),
   location: text("location"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   avatarUrl: text("avatar_url"),
   coverUrl: text("cover_url"),
   isPublicLocation: boolean("is_public_location").notNull().default(true),
