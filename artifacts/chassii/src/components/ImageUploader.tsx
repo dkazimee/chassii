@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUpload } from "@workspace/object-storage-web";
 import { Camera, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ImageCropDialog } from "@/components/ImageCropDialog";
 
 interface ImageUploaderProps {
   value?: string;
@@ -12,6 +13,12 @@ interface ImageUploaderProps {
   shape?: "square" | "circle";
   placeholder?: string;
   aspectRatio?: string;
+  /** Enable crop step before upload. Defaults true for image uploads. */
+  enableCrop?: boolean;
+  /** Crop aspect ratio (width/height). Defaults to 1 for circle, undefined (free) otherwise. */
+  cropAspect?: number;
+  /** Optional title shown on the crop dialog. */
+  cropTitle?: string;
 }
 
 export function ImageUploader({
@@ -23,9 +30,27 @@ export function ImageUploader({
   shape = "square",
   placeholder = "Upload image",
   aspectRatio = "aspect-video",
+  enableCrop = true,
+  cropAspect,
+  cropTitle,
 }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+  const [fileToCrop, setFileToCrop] = useState<File | null>(null);
+
+  // Revoke the in-memory blob preview URL when it changes or on unmount.
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  const isCircle = shape === "circle";
+  const effectiveAspect = cropAspect ?? (isCircle ? 1 : undefined);
 
   const { uploadFile, isUploading, error } = useUpload({
     basePath: "/api/storage",
@@ -37,15 +62,27 @@ export function ImageUploader({
     },
   });
 
-  async function handleFile(file: File) {
+  async function uploadDirect(file: File) {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    const localPreview = URL.createObjectURL(file);
+    previewUrlRef.current = localPreview;
+    setPreview(localPreview);
+    await uploadFile(file);
+  }
+
+  function handleFile(file: File) {
     const maxBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxBytes) {
       alert(`File must be under ${maxSizeMB}MB`);
       return;
     }
-    const localPreview = URL.createObjectURL(file);
-    setPreview(localPreview);
-    await uploadFile(file);
+    if (enableCrop && file.type.startsWith("image/")) {
+      setFileToCrop(file);
+    } else {
+      void uploadDirect(file);
+    }
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -61,15 +98,30 @@ export function ImageUploader({
   }
 
   function handleClear() {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
     setPreview(null);
     onChange("");
   }
 
   const displaySrc = preview ?? value;
-  const isCircle = shape === "circle";
 
   return (
     <div className={cn("relative group", isCircle ? "w-24 h-24" : "w-full", className)}>
+      <ImageCropDialog
+        open={!!fileToCrop}
+        file={fileToCrop}
+        aspect={effectiveAspect}
+        cropShape={isCircle ? "round" : "rect"}
+        title={cropTitle ?? (isCircle ? "Crop profile photo" : "Crop image")}
+        onCancel={() => setFileToCrop(null)}
+        onConfirm={(cropped) => {
+          setFileToCrop(null);
+          void uploadDirect(cropped);
+        }}
+      />
       <input
         ref={inputRef}
         type="file"

@@ -122,6 +122,8 @@ export default function SettingsPage() {
                       <ImageUploader
                         shape="square"
                         aspectRatio="aspect-[4/1]"
+                        cropAspect={4}
+                        cropTitle="Crop cover photo"
                         placeholder="Upload a cover photo (banner)"
                         value={field.value}
                         onChange={field.onChange}

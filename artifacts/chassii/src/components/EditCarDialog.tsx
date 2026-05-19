@@ -139,6 +139,8 @@ export function EditCarDialog({ car, open, onOpenChange, userId }: Props) {
                   <ImageUploader
                     shape="square"
                     aspectRatio="aspect-video"
+                    cropAspect={16 / 9}
+                    cropTitle="Crop car photo"
                     placeholder="Upload a photo of your car"
                     value={field.value}
                     onChange={field.onChange}

@@ -30,11 +30,13 @@ export const EMPTY_FILTERS: FeedFilterValues = {
 const CATEGORY_OPTIONS = [
   { value: "all", label: "All categories" },
   { value: "general", label: "General" },
-  { value: "build", label: "Build" },
-  { value: "help", label: "Help / Advice" },
-  { value: "showcase", label: "Showcase" },
-  { value: "events", label: "Events" },
-  { value: "for_sale", label: "For Sale" },
+  { value: "question", label: "Question" },
+  { value: "build_update", label: "Build Update" },
+  { value: "guide", label: "Guide" },
+  { value: "review", label: "Review" },
+  { value: "problem", label: "Problem" },
+  { value: "event", label: "Event" },
+  { value: "marketplace", label: "Marketplace" },
 ];
 
 interface Props {
