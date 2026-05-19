@@ -5,7 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Settings, Eye, Lock, Car as CarIcon, X, Wrench } from "lucide-react";
+import { Plus, Settings, Eye, Lock, Car as CarIcon, X, Wrench, Bot, Sparkles } from "lucide-react";
+import AIMechanicChat from "@/components/AIMechanicChat";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,8 @@ export default function GaragePage() {
   const [mods, setMods] = useState<ModEntry[]>([]);
   const [modDraft, setModDraft] = useState<ModEntry>({ name: "", category: "", brand: "", notes: "" });
   const [showModForm, setShowModForm] = useState(false);
+  const [selectedMechanicCarId, setSelectedMechanicCarId] = useState<string>("");
+  const [mechanicOpen, setMechanicOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -444,6 +447,69 @@ export default function GaragePage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* AI Mechanic — prominent hero card */}
+      {cars && cars.length > 0 && (() => {
+        const selectedCar = cars.find(c => String(c.id) === selectedMechanicCarId) ?? cars[0];
+        return (
+          <Card className="overflow-hidden rounded-3xl border-0 shadow-xl bg-gradient-to-br from-gray-900 via-gray-900 to-red-950">
+            <CardContent className="p-0">
+              <div className="p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                  <div className="flex items-start gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg shrink-0">
+                      <Bot className="h-7 w-7 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">AI Mechanic</h2>
+                        <Badge className="bg-red-600/20 text-red-300 border border-red-500/30 rounded-full text-xs font-semibold flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" /> AI
+                        </Badge>
+                      </div>
+                      <p className="text-gray-300 text-sm md:text-base max-w-xl">
+                        Diagnose issues, plan maintenance, and get expert advice tailored to your build — anytime.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 md:items-center md:shrink-0">
+                    <Select
+                      value={String(selectedCar.id)}
+                      onValueChange={(v) => setSelectedMechanicCarId(v)}
+                    >
+                      <SelectTrigger className="w-full sm:w-56 bg-white/10 border-white/20 text-white hover:bg-white/15 rounded-full font-semibold">
+                        <SelectValue placeholder="Choose a car" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cars.map(c => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.year} {c.make} {c.model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="lg"
+                      onClick={() => setMechanicOpen(o => !o)}
+                      className="rounded-full font-bold bg-red-600 hover:bg-red-700 shadow-lg"
+                      data-testid="button-ai-mechanic-toggle"
+                    >
+                      <Bot className="mr-2 h-4 w-4" />
+                      {mechanicOpen ? "Close chat" : "Ask the Mechanic"}
+                    </Button>
+                  </div>
+                </div>
+
+                {mechanicOpen && (
+                  <div className="mt-6 rounded-2xl overflow-hidden" style={{ height: "560px", display: "flex", flexDirection: "column" }}>
+                    <AIMechanicChat key={selectedCar.id} car={selectedCar} />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {isCarsLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -10,11 +10,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
-import { MapPin, Wrench, Settings, ChevronRight, Bot } from "lucide-react";
+import { MapPin, Wrench, Settings, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import AIMechanicChat from "@/components/AIMechanicChat";
 import { AddTimelineEntryDialog } from "@/components/AddTimelineEntryDialog";
 import { TIMELINE_TYPES, TIMELINE_TYPE_MAP } from "@/data/timeline-types";
 import { cn } from "@/lib/utils";
@@ -125,28 +123,7 @@ export default function CarDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {/* Tabs: Story + Timeline | AI Mechanic (owner only) */}
-          <Tabs defaultValue="journal" className="w-full">
-            <TabsList className="w-full justify-start border-b border-gray-200 rounded-none bg-transparent p-0 mb-6 h-auto">
-              <TabsTrigger
-                value="journal"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 pb-3 pt-1 text-base font-semibold"
-              >
-                Journal
-              </TabsTrigger>
-              {isOwner && (
-                <TabsTrigger
-                  value="ai-mechanic"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 pb-3 pt-1 text-base font-semibold flex items-center gap-2"
-                  data-testid="tab-ai-mechanic"
-                >
-                  <Bot className="h-4 w-4" />
-                  AI Mechanic
-                </TabsTrigger>
-              )}
-            </TabsList>
-
-            <TabsContent value="journal" className="mt-0 space-y-8">
+          <div className="w-full space-y-8">
               {/* Ownership Story */}
               {car.ownershipStory && (
                 <section>
@@ -252,16 +229,7 @@ export default function CarDetailPage() {
                   )}
                 </div>
               </section>
-            </TabsContent>
-
-            {isOwner && (
-              <TabsContent value="ai-mechanic" className="mt-0">
-                <div className="rounded-2xl overflow-hidden" style={{ height: "600px", display: "flex", flexDirection: "column" }}>
-                  <AIMechanicChat car={car} />
-                </div>
-              </TabsContent>
-            )}
-          </Tabs>
+          </div>
         </div>
 
         <div className="space-y-8">
