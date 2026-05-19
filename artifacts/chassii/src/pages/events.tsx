@@ -53,19 +53,35 @@ export default function EventsPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const effectiveCity = debouncedSearch || (cityFilter !== "all" ? cityFilter : "");
+  const cityParam = cityFilter !== "all" ? cityFilter : "";
 
-  const { data: events, isLoading } = useQuery({
-    queryKey: ["events", { city: effectiveCity }],
+  const { data: allEvents, isLoading } = useQuery({
+    queryKey: ["events", { city: cityParam }],
     queryFn: async () => {
       const url = new URL("/api/events", window.location.origin);
-      if (effectiveCity) url.searchParams.set("city", effectiveCity);
+      if (cityParam) url.searchParams.set("city", cityParam);
       url.searchParams.set("limit", "40");
       const r = await fetch(url.toString(), { credentials: "include" });
       if (!r.ok) throw new Error("Failed to load events");
       return (await r.json()) as ScrapedEvent[];
     },
   });
+
+  const events = (() => {
+    if (!allEvents) return allEvents;
+    const q = debouncedSearch.toLowerCase();
+    if (!q) return allEvents;
+    return allEvents.filter((e) =>
+      e.title.toLowerCase().includes(q) ||
+      (e.description ?? "").toLowerCase().includes(q) ||
+      (e.location ?? "").toLowerCase().includes(q) ||
+      (e.city ?? "").toLowerCase().includes(q) ||
+      (e.type ?? "").toLowerCase().includes(q) ||
+      (e.source ?? "").toLowerCase().includes(q) ||
+      (e.organizer?.displayName ?? "").toLowerCase().includes(q) ||
+      (e.organizer?.username ?? "").toLowerCase().includes(q),
+    );
+  })();
 
   const { data: cities } = useQuery({
     queryKey: ["events", "cities"],
@@ -134,7 +150,7 @@ export default function EventsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by city or area (e.g. Austin, TX)"
+            placeholder="Search events by title, location, organizer…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9 pr-9"
@@ -150,7 +166,7 @@ export default function EventsPage() {
             </button>
           )}
         </div>
-        <Select value={cityFilter} onValueChange={setCityFilter} disabled={!!debouncedSearch}>
+        <Select value={cityFilter} onValueChange={setCityFilter}>
           <SelectTrigger className="w-full sm:w-64" data-testid="select-event-city">
             <SelectValue placeholder="All cities" />
           </SelectTrigger>
