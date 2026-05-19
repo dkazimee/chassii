@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { 
-  useGetCar, useGetCarMods, useGetCarTimeline, useGetSimilarCars, 
+  useGetCar, useGetCarMods, useGetCarTimeline,
   useFollowCar, useUnfollowCar, getGetCarQueryKey, getGetCarModsQueryKey, getGetCarTimelineQueryKey
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,9 +9,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
-import { MapPin, Users, Wrench, Calendar, Settings, ChevronRight } from "lucide-react";
+import { MapPin, Wrench, Settings, ChevronRight, Bot } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import AIMechanicChat from "@/components/AIMechanicChat";
 
 export default function CarDetailPage() {
   const params = useParams();
@@ -102,54 +104,81 @@ export default function CarDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {/* Ownership Story */}
-          {car.ownershipStory && (
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">The Story</h2>
-              <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 text-gray-700 leading-relaxed text-lg">
-                {car.ownershipStory}
-              </div>
-            </section>
-          )}
+          {/* Tabs: Story + Timeline | AI Mechanic */}
+          <Tabs defaultValue="build" className="w-full">
+            <TabsList className="w-full justify-start border-b border-gray-200 rounded-none bg-transparent p-0 mb-6 h-auto">
+              <TabsTrigger
+                value="build"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 pb-3 pt-1 text-base font-semibold"
+              >
+                Build
+              </TabsTrigger>
+              <TabsTrigger
+                value="ai-mechanic"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 pb-3 pt-1 text-base font-semibold flex items-center gap-2"
+              >
+                <Bot className="h-4 w-4" />
+                AI Mechanic
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Timeline */}
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Build Timeline</h2>
-              <Button variant="outline" size="sm" className="rounded-full">View All</Button>
-            </div>
-            
-            <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
-              {isTimelineLoading ? (
-                [1,2].map(i => <Skeleton key={i} className="h-40 w-full" />)
-              ) : timeline && timeline.length > 0 ? (
-                timeline.map((entry, index) => (
-                  <div key={entry.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-red-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
-                      <Wrench className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between mb-1">
-                        <Badge variant="outline" className="text-xs font-semibold uppercase tracking-wider text-gray-500">{entry.type.replace('_', ' ')}</Badge>
-                        <time className="text-sm text-gray-400">{formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}</time>
-                      </div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-2">{entry.title}</h3>
-                      {entry.body && <p className="text-gray-600 mb-3 text-sm">{entry.body}</p>}
-                      {entry.imageUrls && entry.imageUrls.length > 0 && (
-                        <div className="mt-3 rounded-xl overflow-hidden">
-                          <img src={entry.imageUrls[0]} alt="Timeline update" className="w-full h-48 object-cover" />
-                        </div>
-                      )}
-                    </div>
+            <TabsContent value="build" className="mt-0 space-y-8">
+              {/* Ownership Story */}
+              {car.ownershipStory && (
+                <section>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">The Story</h2>
+                  <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 text-gray-700 leading-relaxed text-lg">
+                    {car.ownershipStory}
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200 z-10 relative">
-                  <p className="text-gray-500">No timeline entries yet.</p>
-                </div>
+                </section>
               )}
-            </div>
-          </section>
+
+              {/* Timeline */}
+              <section>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Build Timeline</h2>
+                  <Button variant="outline" size="sm" className="rounded-full">View All</Button>
+                </div>
+                
+                <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
+                  {isTimelineLoading ? (
+                    [1,2].map(i => <Skeleton key={i} className="h-40 w-full" />)
+                  ) : timeline && timeline.length > 0 ? (
+                    timeline.map((entry) => (
+                      <div key={entry.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-red-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                          <Wrench className="h-4 w-4 text-white" />
+                        </div>
+                        <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-1">
+                            <Badge variant="outline" className="text-xs font-semibold uppercase tracking-wider text-gray-500">{entry.type.replace('_', ' ')}</Badge>
+                            <time className="text-sm text-gray-400">{formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}</time>
+                          </div>
+                          <h3 className="text-lg font-bold text-gray-900 mb-2">{entry.title}</h3>
+                          {entry.body && <p className="text-gray-600 mb-3 text-sm">{entry.body}</p>}
+                          {entry.imageUrls && entry.imageUrls.length > 0 && (
+                            <div className="mt-3 rounded-xl overflow-hidden">
+                              <img src={entry.imageUrls[0]} alt="Timeline update" className="w-full h-48 object-cover" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200 z-10 relative">
+                      <p className="text-gray-500">No timeline entries yet.</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </TabsContent>
+
+            <TabsContent value="ai-mechanic" className="mt-0">
+              <div className="rounded-2xl overflow-hidden" style={{ height: "600px", display: "flex", flexDirection: "column" }}>
+                <AIMechanicChat car={car} />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="space-y-8">
@@ -237,8 +266,7 @@ export default function CarDetailPage() {
   );
 }
 
-// Temporary CarIcon since I didn't import it in the component but used it above
-function CarIcon(props: any) {
+function CarIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}
@@ -257,5 +285,5 @@ function CarIcon(props: any) {
       <path d="M9 17h6" />
       <circle cx="17" cy="17" r="2" />
     </svg>
-  )
+  );
 }
