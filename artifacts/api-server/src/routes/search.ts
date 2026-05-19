@@ -10,7 +10,11 @@ const router = Router();
 router.get("/search", async (req, res) => {
   try {
     const { q = "", type = "all", make, model, year, location } = req.query as Record<string, string>;
-    const searchTerm = `%${q}%`;
+    const trimmed = (q ?? "").trim();
+    if (!trimmed) {
+      return res.json({ cars: [], users: [], posts: [] });
+    }
+    const searchTerm = `%${trimmed}%`;
 
     const [cars, users, posts] = await Promise.all([
       (type === "all" || type === "cars") ? db.select({ car: carsTable, user: usersTable })

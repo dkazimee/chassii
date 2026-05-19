@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useSearch as useSearchHook } from "wouter";
 import { useSearch } from "@workspace/api-client-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,11 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 
 export default function SearchPage() {
-  const [location] = useLocation();
-  const searchParams = new URLSearchParams(location.split('?')[1]);
-  const q = searchParams.get('q') || '';
-  
-  const { data: results, isLoading } = useSearch({ q });
+  const searchString = useSearchHook();
+  const q = new URLSearchParams(searchString).get('q') || '';
+
+  const { data: results, isLoading } = useSearch({ q }, { query: { enabled: !!q } });
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
