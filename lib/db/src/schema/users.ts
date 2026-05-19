@@ -13,6 +13,8 @@ export const usersTable = pgTable("users", {
   coverUrl: text("cover_url"),
   isPublicLocation: boolean("is_public_location").notNull().default(true),
   isPublicGarage: boolean("is_public_garage").notNull().default(true),
+  isAdmin: boolean("is_admin").notNull().default(false),
+  isBlocked: boolean("is_blocked").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

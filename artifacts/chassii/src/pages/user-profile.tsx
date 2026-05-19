@@ -1,4 +1,6 @@
-import { useParams, Link } from "wouter";
+import { useState, useEffect } from "react";
+import { useParams, Link, useLocation } from "wouter";
+import { useAuth } from "@clerk/react";
 import { useGetUser, useGetUserCars, useGetUserPosts, useFollowUser, useUnfollowUser, getGetUserQueryKey, getGetUserCarsQueryKey, getGetUserPostsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -6,12 +8,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, Users, Car, MessageSquare } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Users, Car, MessageSquare, Shield } from "lucide-react";
 
 export default function UserProfilePage() {
   const params = useParams();
   const userId = Number(params.userId);
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  const { isSignedIn } = useAuth();
+
+  const [adminStatus, setAdminStatus] = useState<{ isAdmin: boolean } | null>(null);
+  const [noAdminYet, setNoAdminYet] = useState(false);
+  const [claimingAdmin, setClaimingAdmin] = useState(false);
 
   const { data: user, isLoading: isUserLoading } = useGetUser(userId, { query: { enabled: !!userId, queryKey: getGetUserQueryKey(userId) } });
   const { data: cars, isLoading: isCarsLoading } = useGetUserCars(userId, { query: { enabled: !!userId, queryKey: getGetUserCarsQueryKey(userId) } });
@@ -19,6 +28,47 @@ export default function UserProfilePage() {
 
   const followUser = useFollowUser();
   const unfollowUser = useUnfollowUser();
+
+  // Fetch admin status when signed in and viewing own profile
+  useEffect(() => {
+    if (!isSignedIn) return;
+    fetch("/api/admin/me")
+      .then(r => r.json())
+      .then(d => {
+        setAdminStatus(d);
+        // Check if any admin exists at all (by trying setup probe)
+        if (!d.isAdmin) {
+          fetch("/api/admin/setup", { method: "POST" })
+            .then(r => {
+              if (r.status === 409) setNoAdminYet(false);
+              else if (r.status === 401 || r.status === 403) setNoAdminYet(false);
+              // if ok, admin was just created (shouldn't happen here, handled below)
+            })
+            .catch(() => {});
+          // Actually just check if we should show the claim button by trying to GET users list
+          fetch("/api/admin/users").then(r => {
+            if (r.status === 403) {
+              // No admin yet check: try to see if setup would work
+              setNoAdminYet(true);
+            }
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, [isSignedIn]);
+
+  const claimAdmin = async () => {
+    setClaimingAdmin(true);
+    try {
+      const res = await fetch("/api/admin/setup", { method: "POST" });
+      if (res.ok) {
+        setAdminStatus({ isAdmin: true });
+        setNoAdminYet(false);
+      }
+    } finally {
+      setClaimingAdmin(false);
+    }
+  };
 
   const toggleFollow = () => {
     if (user?.iFollowThem) {
@@ -35,6 +85,9 @@ export default function UserProfilePage() {
   if (isUserLoading) return <div className="space-y-4"><Skeleton className="h-64 w-full" /><Skeleton className="h-96 w-full" /></div>;
   if (!user) return <div className="text-center py-20">User not found</div>;
 
+  const isOwnProfile = adminStatus !== null;
+  const isAdmin = adminStatus?.isAdmin ?? false;
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Profile Header */}
@@ -48,9 +101,32 @@ export default function UserProfilePage() {
               <AvatarImage src={user.avatarUrl || ''} />
               <AvatarFallback className="text-4xl">{user.displayName?.charAt(0)}</AvatarFallback>
             </Avatar>
-            <div className="flex gap-3">
-              <Button 
-                onClick={toggleFollow} 
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Admin Panel button — only visible to the admin */}
+              {isAdmin && (
+                <Button
+                  onClick={() => setLocation("/admin")}
+                  variant="outline"
+                  className="rounded-full px-5 border-red-200 text-red-700 hover:bg-red-50 flex items-center gap-2"
+                >
+                  <Shield className="h-4 w-4" />
+                  Admin Panel
+                </Button>
+              )}
+              {/* Claim Admin — only shows when no admin exists yet and user is signed in */}
+              {!isAdmin && noAdminYet && isSignedIn && (
+                <Button
+                  onClick={claimAdmin}
+                  disabled={claimingAdmin}
+                  variant="outline"
+                  className="rounded-full px-5 border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-2 text-xs"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  {claimingAdmin ? "Claiming…" : "Claim Admin"}
+                </Button>
+              )}
+              <Button
+                onClick={toggleFollow}
                 variant={user.iFollowThem ? "outline" : "default"}
                 className="rounded-full px-6"
                 disabled={followUser.isPending || unfollowUser.isPending}
@@ -59,13 +135,20 @@ export default function UserProfilePage() {
               </Button>
             </div>
           </div>
-          
+
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{user.displayName}</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-bold text-gray-900">{user.displayName}</h1>
+              {isAdmin && (
+                <Badge className="bg-red-100 text-red-700 border-red-200 flex items-center gap-1">
+                  <Shield className="h-3 w-3" /> Admin
+                </Badge>
+              )}
+            </div>
             <p className="text-gray-500 font-medium">@{user.username}</p>
-            
+
             {user.bio && <p className="mt-4 text-gray-700 max-w-2xl text-lg">{user.bio}</p>}
-            
+
             <div className="flex flex-wrap gap-6 mt-6 text-sm text-gray-600">
               {user.location && (
                 <div className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {user.location}</div>
@@ -86,7 +169,7 @@ export default function UserProfilePage() {
             Discussions <span className="ml-2 bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">{user.postCount || 0}</span>
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="garage" className="mt-0">
           {isCarsLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -120,16 +203,16 @@ export default function UserProfilePage() {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="posts" className="mt-0">
           {isPostsLoading ? (
-             <div className="space-y-4">
+            <div className="space-y-4">
               {[1,2].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
             </div>
           ) : posts && posts.length > 0 ? (
             <div className="space-y-4">
               {posts.map(post => (
-                 <Link key={post.id} href={`/posts/${post.id}`}>
+                <Link key={post.id} href={`/posts/${post.id}`}>
                   <Card className="hover:border-primary/50 transition-colors cursor-pointer rounded-2xl border-gray-200">
                     <CardContent className="p-6">
                       <h3 className="text-xl font-bold text-gray-900 mb-2">{post.title}</h3>
@@ -140,11 +223,11 @@ export default function UserProfilePage() {
                       </div>
                     </CardContent>
                   </Card>
-                 </Link>
+                </Link>
               ))}
             </div>
           ) : (
-             <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
+            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
               <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-medium text-gray-900">No discussions</h3>
               <p className="mt-2 text-gray-500">This user hasn't started any discussions yet.</p>

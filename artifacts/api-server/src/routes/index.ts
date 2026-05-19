@@ -7,6 +7,7 @@ import feedRouter from "./feed";
 import eventsRouter from "./events";
 import searchRouter from "./search";
 import aiRouter from "./ai";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(feedRouter);
 router.use(eventsRouter);
 router.use(searchRouter);
 router.use(aiRouter);
+router.use(adminRouter);
 
 export default router;

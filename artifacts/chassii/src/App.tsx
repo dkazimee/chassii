@@ -18,6 +18,7 @@ import SearchPage from "@/pages/search";
 import SettingsPage from "@/pages/settings";
 import UserProfilePage from "@/pages/user-profile";
 import CarDetailPage from "@/pages/car-detail";
+import AdminPage from "@/pages/admin";
 
 const queryClient = new QueryClient();
 
@@ -149,6 +150,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/settings"><Layout><ProtectedRoute component={SettingsPage} /></Layout></Route>
           <Route path="/users/:userId"><Layout><UserProfilePage /></Layout></Route>
           <Route path="/cars/:carId"><Layout><CarDetailPage /></Layout></Route>
+          <Route path="/admin"><Layout><ProtectedRoute component={AdminPage} /></Layout></Route>
           <Route path="*">
             <div className="min-h-screen flex items-center justify-center">
               <h1 className="text-2xl font-bold">404 - Not Found</h1>
