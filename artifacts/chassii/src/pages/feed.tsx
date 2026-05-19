@@ -16,11 +16,15 @@ import { useLightbox } from "@/components/Lightbox";
 function matchesFilters(item: any, f: FeedFilterValues): boolean {
   const make = (item.post?.make ?? item.car?.make ?? "").toString().toLowerCase();
   const model = (item.post?.model ?? item.car?.model ?? "").toString().toLowerCase();
+  const year = (item.post?.year ?? item.car?.year ?? "").toString();
+  const generation = (item.post?.generation ?? item.car?.generation ?? "").toString().toLowerCase();
   const location = (item.post?.location ?? item.actor?.location ?? "").toString().toLowerCase();
   const category = (item.post?.category ?? "").toString().toLowerCase();
 
   if (f.make && make !== f.make.toLowerCase()) return false;
   if (f.model && model !== f.model.toLowerCase()) return false;
+  if (f.year && year !== f.year) return false;
+  if (f.generation && generation !== f.generation.toLowerCase()) return false;
   if (f.location && !location.includes(f.location.toLowerCase().trim())) return false;
   if (f.category && f.category !== "all" && category !== f.category.toLowerCase()) return false;
   return true;
@@ -45,7 +49,7 @@ export default function FeedPage() {
 
   const filteredFeed = (feedData ?? []).filter((item) => matchesFilters(item, filters));
   const hasActiveFilters =
-    !!filters.make || !!filters.model || !!filters.location || (!!filters.category && filters.category !== "all");
+    !!filters.make || !!filters.model || !!filters.year || !!filters.generation || !!filters.location || (!!filters.category && filters.category !== "all");
 
   const renderFeedItem = (item: any) => {
     if (item.type === 'post' && item.post) {

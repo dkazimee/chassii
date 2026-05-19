@@ -687,6 +687,7 @@ export const ListPostsQueryParams = zod.object({
   "make": zod.coerce.string().optional(),
   "model": zod.coerce.string().optional(),
   "year": zod.coerce.number().optional(),
+  "generation": zod.coerce.string().optional(),
   "category": zod.coerce.string().optional(),
   "tag": zod.coerce.string().optional(),
   "location": zod.coerce.string().optional(),

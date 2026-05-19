@@ -518,6 +518,7 @@ export type ListPostsParams = {
 make?: string;
 model?: string;
 year?: number;
+generation?: string;
 category?: string;
 tag?: string;
 location?: string;

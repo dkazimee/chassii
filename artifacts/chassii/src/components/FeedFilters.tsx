@@ -16,6 +16,8 @@ import { useState } from "react";
 export interface FeedFilterValues {
   make: string;
   model: string;
+  year: string;
+  generation: string;
   location: string;
   category: string;
 }
@@ -23,6 +25,8 @@ export interface FeedFilterValues {
 export const EMPTY_FILTERS: FeedFilterValues = {
   make: "",
   model: "",
+  year: "",
+  generation: "",
   location: "",
   category: "",
 };
@@ -53,6 +57,8 @@ export function FeedFilters({ value, onChange, resultCount, totalCount }: Props)
   const activeCount =
     (value.make ? 1 : 0) +
     (value.model ? 1 : 0) +
+    (value.year ? 1 : 0) +
+    (value.generation ? 1 : 0) +
     (value.location ? 1 : 0) +
     (value.category && value.category !== "all" ? 1 : 0);
 
@@ -114,6 +120,26 @@ export function FeedFilters({ value, onChange, resultCount, totalCount }: Props)
               />
             </div>
             <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Year</label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1900}
+                max={2100}
+                value={value.year}
+                onChange={(e) => onChange({ ...value, year: e.target.value.replace(/[^0-9]/g, "") })}
+                placeholder="e.g. 2022"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Generation</label>
+              <Input
+                value={value.generation}
+                onChange={(e) => onChange({ ...value, generation: e.target.value })}
+                placeholder="e.g. E46, F80, MK5"
+              />
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Location</label>
               <Input
                 value={value.location}
@@ -149,6 +175,12 @@ export function FeedFilters({ value, onChange, resultCount, totalCount }: Props)
                 )}
                 {value.model && (
                   <FilterChip label={value.model} onClear={() => onChange({ ...value, model: "" })} />
+                )}
+                {value.year && (
+                  <FilterChip label={value.year} onClear={() => onChange({ ...value, year: "" })} />
+                )}
+                {value.generation && (
+                  <FilterChip label={value.generation} onClear={() => onChange({ ...value, generation: "" })} />
                 )}
                 {value.location && (
                   <FilterChip label={value.location} onClear={() => onChange({ ...value, location: "" })} />

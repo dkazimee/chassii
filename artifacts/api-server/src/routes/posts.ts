@@ -43,13 +43,28 @@ function formatPost(p: typeof postsTable.$inferSelect, author: typeof usersTable
 // GET /api/posts
 router.get("/posts", async (req, res) => {
   try {
-    const { make, model, year, category, tag, location, sort, limit = "20", offset = "0" } = req.query as Record<string, string>;
+    const { make, model, year, generation, category, tag, location, sort, limit = "20", offset = "0" } = req.query as Record<string, string>;
     const { userId: clerkId } = getAuth(req);
+
+    const conditions = [] as any[];
+    if (make) conditions.push(ilike(postsTable.make, make));
+    if (model) conditions.push(ilike(postsTable.model, model));
+    if (year) {
+      const y = parseInt(year);
+      if (!Number.isNaN(y)) conditions.push(eq(postsTable.year, y));
+    }
+    if (generation) conditions.push(ilike(postsTable.generation, `%${generation}%`));
+    if (category && category !== "all") conditions.push(eq(postsTable.category, category));
+    if (tag) conditions.push(sql`${postsTable.tags} @> ARRAY[${tag}]::text[]`);
+    if (location) conditions.push(ilike(postsTable.location, `%${location}%`));
+
+    const orderBy = sort === "newest" ? desc(postsTable.createdAt) : desc(postsTable.createdAt);
 
     const posts = await db.select({ post: postsTable, author: usersTable })
       .from(postsTable)
       .innerJoin(usersTable, eq(usersTable.id, postsTable.userId))
-      .orderBy(desc(postsTable.createdAt))
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(orderBy)
       .limit(parseInt(limit))
       .offset(parseInt(offset));
 

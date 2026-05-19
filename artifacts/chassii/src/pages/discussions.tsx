@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useListPosts } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,12 +11,40 @@ import { MessageSquare, PlusCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
 import { PostActions } from "@/components/PostActions";
+import { FeedFilters, EMPTY_FILTERS, type FeedFilterValues } from "@/components/FeedFilters";
 
 export default function DiscussionsPage() {
   const [, setLocation] = useLocation();
   const [sort, setSort] = useState<'newest' | 'popular'>('popular');
-  
-  const { data: posts, isLoading } = useListPosts({ sort, limit: 20 });
+  const [filters, setFilters] = useState<FeedFilterValues>(EMPTY_FILTERS);
+  const [search, setSearch] = useState("");
+
+  const queryParams = useMemo(() => {
+    const p: Record<string, any> = { sort, limit: 20 };
+    if (filters.make) p.make = filters.make;
+    if (filters.model) p.model = filters.model;
+    if (filters.year) {
+      const y = parseInt(filters.year, 10);
+      if (!Number.isNaN(y)) p.year = y;
+    }
+    if (filters.generation) p.generation = filters.generation;
+    if (filters.location) p.location = filters.location;
+    if (filters.category && filters.category !== "all") p.category = filters.category;
+    return p;
+  }, [sort, filters]);
+
+  const { data: posts, isLoading } = useListPosts(queryParams);
+
+  const visiblePosts = useMemo(() => {
+    if (!posts) return [];
+    const q = search.trim().toLowerCase();
+    if (!q) return posts;
+    return posts.filter((p) =>
+      p.title.toLowerCase().includes(q) ||
+      (p.body ?? "").toLowerCase().includes(q) ||
+      (p.tags ?? []).some((t) => t.toLowerCase().includes(q)),
+    );
+  }, [posts, search]);
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -40,17 +68,29 @@ export default function DiscussionsPage() {
         
         <div className="relative w-full md:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input placeholder="Search discussions..." className="pl-10 rounded-full bg-white border-gray-200" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search discussions..."
+            className="pl-10 rounded-full bg-white border-gray-200"
+          />
         </div>
       </div>
+
+      <FeedFilters
+        value={filters}
+        onChange={setFilters}
+        resultCount={visiblePosts.length}
+        totalCount={posts?.length ?? 0}
+      />
 
       <div className="space-y-4">
         {isLoading ? (
           [1,2,3,4].map(i => (
             <Card key={i} className="rounded-2xl border-gray-100 shadow-sm"><CardContent className="p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>
           ))
-        ) : posts && posts.length > 0 ? (
-          posts.map(post => (
+        ) : visiblePosts.length > 0 ? (
+          visiblePosts.map(post => (
             <Card key={post.id} className="rounded-2xl border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all group">
               <CardContent className="p-6 md:p-8">
                 <Link href={`/posts/${post.id}`} className="block cursor-pointer">
