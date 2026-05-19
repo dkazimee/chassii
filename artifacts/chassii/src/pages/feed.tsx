@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useGetFeed, useGetStatsSummary } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,10 +7,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
 import { Car, MessageSquare, ThumbsUp, Wrench } from "lucide-react";
+import { FeedFilters, EMPTY_FILTERS, type FeedFilterValues } from "@/components/FeedFilters";
+
+function matchesFilters(item: any, f: FeedFilterValues): boolean {
+  const make = (item.post?.make ?? item.car?.make ?? "").toString().toLowerCase();
+  const model = (item.post?.model ?? item.car?.model ?? "").toString().toLowerCase();
+  const location = (item.post?.location ?? item.actor?.location ?? "").toString().toLowerCase();
+  const category = (item.post?.category ?? "").toString().toLowerCase();
+
+  if (f.make && make !== f.make.toLowerCase()) return false;
+  if (f.model && model !== f.model.toLowerCase()) return false;
+  if (f.location && !location.includes(f.location.toLowerCase().trim())) return false;
+  if (f.category && f.category !== "all" && category !== f.category.toLowerCase()) return false;
+  return true;
+}
 
 export default function FeedPage() {
   const { data: feedData, isLoading } = useGetFeed();
   const { data: stats } = useGetStatsSummary();
+  const [filters, setFilters] = useState<FeedFilterValues>(EMPTY_FILTERS);
+
+  const filteredFeed = (feedData ?? []).filter((item) => matchesFilters(item, filters));
+  const hasActiveFilters =
+    !!filters.make || !!filters.model || !!filters.location || (!!filters.category && filters.category !== "all");
 
   const renderFeedItem = (item: any) => {
     if (item.type === 'post' && item.post) {
@@ -150,6 +170,12 @@ export default function FeedPage() {
           </TabsList>
           
           <TabsContent value="all" className="mt-0">
+            <FeedFilters
+              value={filters}
+              onChange={setFilters}
+              resultCount={filteredFeed.length}
+              totalCount={feedData?.length ?? 0}
+            />
             {isLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
@@ -167,8 +193,14 @@ export default function FeedPage() {
                   </Card>
                 ))}
               </div>
-            ) : feedData && feedData.length > 0 ? (
-              feedData.map(renderFeedItem)
+            ) : filteredFeed.length > 0 ? (
+              filteredFeed.map(renderFeedItem)
+            ) : hasActiveFilters ? (
+              <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                <Car className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900">No activity matches these filters</h3>
+                <p className="mt-1 text-gray-500">Try clearing a filter or two to see more.</p>
+              </div>
             ) : (
               <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
                 <Car className="h-12 w-12 text-gray-300 mx-auto mb-4" />
