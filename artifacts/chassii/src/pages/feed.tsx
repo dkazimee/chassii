@@ -193,7 +193,7 @@ export default function FeedPage() {
     {lightbox.element}
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2">
-        <Tabs defaultValue="all" className="w-full">
+        <Tabs defaultValue="following" className="w-full">
           <TabsList className="mb-6 w-full justify-start border-b rounded-none h-12 bg-transparent p-0">
             <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2 font-semibold">
               All Activity
