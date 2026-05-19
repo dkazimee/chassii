@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
-import { useGetFeed, useGetStatsSummary } from "@workspace/api-client-react";
+import { useGetFeed } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -43,7 +43,6 @@ export default function FeedPage() {
     },
   });
   const isAdmin = !!adminInfo?.isAdmin;
-  const { data: stats } = useGetStatsSummary({ query: { enabled: isAdmin } });
   const [filters, setFilters] = useState<FeedFilterValues>(EMPTY_FILTERS);
   const lightbox = useLightbox();
 
@@ -191,8 +190,8 @@ export default function FeedPage() {
   return (
     <>
     {lightbox.element}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2">
+    <div className="max-w-3xl mx-auto">
+      <div>
         <Tabs defaultValue="following" className="w-full">
           <TabsList className="mb-6 w-full justify-start border-b rounded-none h-12 bg-transparent p-0">
             <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2 font-semibold">
@@ -253,49 +252,6 @@ export default function FeedPage() {
         </Tabs>
       </div>
       
-      {isAdmin && (
-      <div className="hidden lg:block space-y-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <h3 className="font-semibold text-gray-900">Community Stats</h3>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Garages</span>
-                <span className="font-semibold">{stats?.totalUsers || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Cars</span>
-                <span className="font-semibold">{stats?.totalCars || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Discussions</span>
-                <span className="font-semibold">{stats?.totalPosts || 0}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {stats?.topMakes && stats.topMakes.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <h3 className="font-semibold text-gray-900">Top Makes</h3>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {stats.topMakes.map((make: any) => (
-                  <div key={make.make} className="flex justify-between items-center">
-                    <span className="text-gray-700 font-medium">{make.make}</span>
-                    <span className="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded-md">{make.count}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-      )}
     </div>
     </>
   );
