@@ -30,8 +30,10 @@ export function ImageUploader({
   const { uploadFile, isUploading, error } = useUpload({
     basePath: "/api/storage",
     onSuccess: (response) => {
-      const url = `/api/storage/objects/${response.objectPath}`;
-      onChange(url);
+      const path = response.objectPath.startsWith("/")
+        ? response.objectPath
+        : `/${response.objectPath}`;
+      onChange(`/api/storage${path}`);
     },
   });
 
