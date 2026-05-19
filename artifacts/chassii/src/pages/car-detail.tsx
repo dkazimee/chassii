@@ -18,6 +18,7 @@ import AIMechanicChat from "@/components/AIMechanicChat";
 import { AddTimelineEntryDialog } from "@/components/AddTimelineEntryDialog";
 import { TIMELINE_TYPES, TIMELINE_TYPE_MAP } from "@/data/timeline-types";
 import { cn } from "@/lib/utils";
+import { useLightbox } from "@/components/Lightbox";
 
 export default function CarDetailPage() {
   const params = useParams();
@@ -33,6 +34,7 @@ export default function CarDetailPage() {
 
   const followCar = useFollowCar();
   const unfollowCar = useUnfollowCar();
+  const lightbox = useLightbox();
 
   const isOwner = !!me && !!car?.owner && me.id === car.owner.id;
   const filteredTimeline = (timeline ?? []).filter(
@@ -68,14 +70,20 @@ export default function CarDetailPage() {
 
   return (
     <div className="space-y-8">
+      {lightbox.element}
       {/* Hero Section */}
       <div className="relative rounded-3xl overflow-hidden shadow-2xl h-[50vh] min-h-[400px] bg-gray-900">
         {car.mainImageUrl ? (
-           <img src={car.mainImageUrl} alt={`${car.make} ${car.model}`} className="absolute inset-0 w-full h-full object-cover opacity-80" />
+           <img
+             src={car.mainImageUrl}
+             alt={`${car.make} ${car.model}`}
+             onClick={() => lightbox.open(car.mainImageUrl!, 0, `${car.year} ${car.make} ${car.model}`)}
+             className="absolute inset-0 w-full h-full object-cover opacity-80 cursor-zoom-in"
+           />
         ) : (
            <div className="absolute inset-0 flex items-center justify-center bg-gray-800"><CarIcon className="h-24 w-24 text-gray-600" /></div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent pointer-events-none" />
         
         <div className="absolute bottom-0 left-0 right-0 p-8 sm:p-12">
           <div className="flex flex-col sm:flex-row justify-between items-end gap-6">
@@ -213,9 +221,18 @@ export default function CarDetailPage() {
                             <h3 className="text-lg font-bold text-gray-900 mb-2">{entry.title}</h3>
                             {entry.body && <p className="text-gray-600 mb-3 text-sm whitespace-pre-wrap">{entry.body}</p>}
                             {entry.imageUrls && entry.imageUrls.length > 0 && (
-                              <div className="mt-3 rounded-xl overflow-hidden">
-                                <img src={entry.imageUrls[0]} alt={entry.title} className="w-full h-48 object-cover" />
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => lightbox.open(entry.imageUrls!, 0, entry.title)}
+                                className="mt-3 rounded-xl overflow-hidden block w-full relative group/img focus:outline-none focus:ring-2 focus:ring-primary"
+                              >
+                                <img src={entry.imageUrls[0]} alt={entry.title} className="w-full h-48 object-cover cursor-zoom-in" />
+                                {entry.imageUrls.length > 1 && (
+                                  <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full backdrop-blur-md">
+                                    +{entry.imageUrls.length - 1}
+                                  </div>
+                                )}
+                              </button>
                             )}
                           </div>
                         </div>

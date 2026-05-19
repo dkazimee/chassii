@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Users, Car, MessageSquare, Shield, Camera, Pencil } from "lucide-react";
+import { useLightbox } from "@/components/Lightbox";
+import { cn } from "@/lib/utils";
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -29,6 +31,7 @@ export default function UserProfilePage() {
 
   const followUser = useFollowUser();
   const unfollowUser = useUnfollowUser();
+  const lightbox = useLightbox();
 
   // Fetch admin status when signed in and viewing own profile
   useEffect(() => {
@@ -91,10 +94,18 @@ export default function UserProfilePage() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
+      {lightbox.element}
       {/* Profile Header */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="h-48 w-full bg-gradient-to-r from-gray-800 to-gray-900 relative group">
-          {user.coverUrl && <img src={user.coverUrl} alt="Cover" className="w-full h-full object-cover opacity-60" />}
+          {user.coverUrl && (
+            <img
+              src={user.coverUrl}
+              alt="Cover"
+              onClick={() => lightbox.open(user.coverUrl!, 0, `${user.displayName}'s cover photo`)}
+              className="w-full h-full object-cover opacity-60 cursor-zoom-in"
+            />
+          )}
           {isOwnProfile && (
             <Link
               href="/settings"
@@ -108,14 +119,22 @@ export default function UserProfilePage() {
         <div className="px-8 pb-8 relative">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 -mt-16 sm:-mt-20 mb-6">
             <div className="relative group">
-              <Avatar className="h-32 w-32 border-4 border-white shadow-md bg-white">
-                <AvatarImage src={user.avatarUrl || ''} />
-                <AvatarFallback className="text-4xl">{user.displayName?.charAt(0)}</AvatarFallback>
-              </Avatar>
+              <button
+                type="button"
+                onClick={() => user.avatarUrl && lightbox.open(user.avatarUrl, 0, `${user.displayName}'s profile photo`)}
+                className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="View profile photo"
+                disabled={!user.avatarUrl}
+              >
+                <Avatar className={cn("h-32 w-32 border-4 border-white shadow-md bg-white", user.avatarUrl && "cursor-zoom-in")}>
+                  <AvatarImage src={user.avatarUrl || ''} />
+                  <AvatarFallback className="text-4xl">{user.displayName?.charAt(0)}</AvatarFallback>
+                </Avatar>
+              </button>
               {isOwnProfile && (
                 <Link
                   href="/settings"
-                  className="absolute inset-0 rounded-full flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors"
+                  className="absolute inset-0 rounded-full flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors pointer-events-none group-hover:pointer-events-auto"
                   title="Change profile photo"
                 >
                   <Camera className="h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity" />

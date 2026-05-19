@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
 import { Car, MessageSquare, ThumbsUp, Wrench } from "lucide-react";
 import { FeedFilters, EMPTY_FILTERS, type FeedFilterValues } from "@/components/FeedFilters";
+import { useLightbox } from "@/components/Lightbox";
 
 function matchesFilters(item: any, f: FeedFilterValues): boolean {
   const make = (item.post?.make ?? item.car?.make ?? "").toString().toLowerCase();
@@ -26,6 +27,7 @@ export default function FeedPage() {
   const { data: feedData, isLoading } = useGetFeed();
   const { data: stats } = useGetStatsSummary();
   const [filters, setFilters] = useState<FeedFilterValues>(EMPTY_FILTERS);
+  const lightbox = useLightbox();
 
   const filteredFeed = (feedData ?? []).filter((item) => matchesFilters(item, filters));
   const hasActiveFilters =
@@ -142,7 +144,14 @@ export default function FeedPage() {
                   {item.timelineEntry.imageUrls && item.timelineEntry.imageUrls.length > 0 && (
                      <div className="grid grid-cols-2 gap-2 mt-2">
                         {item.timelineEntry.imageUrls.map((url: string, i: number) => (
-                           <img key={i} src={url} alt="Timeline update" className="rounded-lg w-full h-32 object-cover" />
+                           <button
+                             key={i}
+                             type="button"
+                             onClick={() => lightbox.open(item.timelineEntry.imageUrls, i, item.timelineEntry.title)}
+                             className="block w-full focus:outline-none focus:ring-2 focus:ring-primary rounded-lg overflow-hidden"
+                           >
+                             <img src={url} alt="Timeline update" className="rounded-lg w-full h-32 object-cover cursor-zoom-in hover:opacity-95 transition-opacity" />
+                           </button>
                         ))}
                      </div>
                   )}
@@ -157,6 +166,8 @@ export default function FeedPage() {
   };
 
   return (
+    <>
+    {lightbox.element}
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2">
         <Tabs defaultValue="all" className="w-full">
@@ -261,5 +272,6 @@ export default function FeedPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
