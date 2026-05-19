@@ -10,13 +10,14 @@ import * as z from "zod";
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useClerk } from "@clerk/react";
+import { ImageUploader } from "@/components/ImageUploader";
 
 const profileSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
   bio: z.string().optional(),
   location: z.string().optional(),
-  avatarUrl: z.string().url().optional().or(z.literal("")),
-  coverUrl: z.string().url().optional().or(z.literal("")),
+  avatarUrl: z.string().optional(),
+  coverUrl: z.string().optional(),
 });
 
 export default function SettingsPage() {
@@ -78,13 +79,54 @@ export default function SettingsPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+
+              <div className="flex items-end gap-6">
+                <FormField
+                  control={form.control}
+                  name="avatarUrl"
+                  render={({ field }) => (
+                    <FormItem className="shrink-0">
+                      <FormLabel>Profile Photo</FormLabel>
+                      <FormControl>
+                        <ImageUploader
+                          shape="circle"
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="displayName"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Display Name</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
-                name="displayName"
+                name="coverUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Display Name</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormLabel>Cover Photo</FormLabel>
+                    <FormControl>
+                      <ImageUploader
+                        shape="square"
+                        aspectRatio="aspect-[4/1]"
+                        placeholder="Upload a cover photo (banner)"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -113,31 +155,6 @@ export default function SettingsPage() {
                   </FormItem>
                 )}
               />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="avatarUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Avatar Image URL</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="coverUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cover Image URL</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
 
               <div className="flex justify-end pt-4 border-t border-gray-100">
                 <Button type="submit" disabled={updateMe.isPending}>

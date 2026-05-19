@@ -15,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUploader } from "@/components/ImageUploader";
 
 const carFormSchema = z.object({
   make: z.string().min(1, "Make is required"),
@@ -148,8 +149,16 @@ export default function GaragePage() {
                     name="mainImageUrl"
                     render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel>Main Image URL</FormLabel>
-                        <FormControl><Input placeholder="https://..." {...field} /></FormControl>
+                        <FormLabel>Car Photo</FormLabel>
+                        <FormControl>
+                          <ImageUploader
+                            shape="square"
+                            aspectRatio="aspect-video"
+                            placeholder="Upload a photo of your car"
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

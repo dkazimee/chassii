@@ -8,6 +8,7 @@ import eventsRouter from "./events";
 import searchRouter from "./search";
 import aiRouter from "./ai";
 import adminRouter from "./admin";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(eventsRouter);
 router.use(searchRouter);
 router.use(aiRouter);
 router.use(adminRouter);
+router.use(storageRouter);
 
 export default router;
