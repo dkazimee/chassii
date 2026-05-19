@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { usersTable, eventsTable, eventRsvpsTable } from "@workspace/db";
+import { usersTable, eventsTable, eventRsvpsTable, eventAlertPreferencesTable } from "@workspace/db";
 import { eq, and, sql, asc, ilike, isNotNull } from "drizzle-orm";
 import { getOrCreateUser, formatUser } from "./users";
 import { geocodeCity } from "../geocode";
@@ -139,6 +139,76 @@ router.post("/events", requireAuth(), async (req, res) => {
     return res.status(201).json(formatEvent(event, me));
   } catch (err) {
     req.log.error({ err }, "Error creating event");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/users/me/alert-preferences
+router.get("/users/me/alert-preferences", requireAuth(), async (req, res) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
+    const me = await getOrCreateUser(clerkId);
+
+    const pref = await db.query.eventAlertPreferencesTable.findFirst({
+      where: eq(eventAlertPreferencesTable.userId, me.id),
+    });
+
+    return res.json(pref ? { city: pref.city, enabled: pref.enabled } : null);
+  } catch (err) {
+    req.log.error({ err }, "Error getting alert preferences");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /api/users/me/alert-preferences
+router.put("/users/me/alert-preferences", requireAuth(), async (req, res) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
+    const me = await getOrCreateUser(clerkId);
+
+    const { city, enabled } = req.body as { city?: string; enabled?: boolean };
+    if (!city || !city.trim()) {
+      return res.status(400).json({ error: "city is required" });
+    }
+
+    const existing = await db.query.eventAlertPreferencesTable.findFirst({
+      where: eq(eventAlertPreferencesTable.userId, me.id),
+    });
+
+    let pref;
+    if (existing) {
+      [pref] = await db.update(eventAlertPreferencesTable)
+        .set({ city: city.trim(), enabled: enabled !== false })
+        .where(eq(eventAlertPreferencesTable.userId, me.id))
+        .returning();
+    } else {
+      [pref] = await db.insert(eventAlertPreferencesTable)
+        .values({ userId: me.id, city: city.trim(), enabled: enabled !== false })
+        .returning();
+    }
+
+    return res.json({ city: pref.city, enabled: pref.enabled });
+  } catch (err) {
+    req.log.error({ err }, "Error saving alert preferences");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /api/users/me/alert-preferences
+router.delete("/users/me/alert-preferences", requireAuth(), async (req, res) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
+    const me = await getOrCreateUser(clerkId);
+
+    await db.delete(eventAlertPreferencesTable)
+      .where(eq(eventAlertPreferencesTable.userId, me.id));
+
+    return res.json({ deleted: true });
+  } catch (err) {
+    req.log.error({ err }, "Error deleting alert preferences");
     return res.status(500).json({ error: "Internal server error" });
   }
 });

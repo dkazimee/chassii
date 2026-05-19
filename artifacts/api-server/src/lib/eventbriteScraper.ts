@@ -106,11 +106,13 @@ export type EventbriteScrapeReport = {
   skippedPast: number;
   skippedNoLocation: number;
   errors: number;
+  insertedEvents: Array<{ id: number; city: string; title: string }>;
 };
 
 export async function scrapeEventbriteEvents(city?: string): Promise<EventbriteScrapeReport> {
   const report: EventbriteScrapeReport = {
     fetched: 0, inserted: 0, skippedDuplicates: 0, skippedPast: 0, skippedNoLocation: 0, errors: 0,
+    insertedEvents: [],
   };
 
   const bot = await getOrCreateBotUser();
@@ -159,6 +161,7 @@ export async function scrapeEventbriteEvents(city?: string): Promise<EventbriteS
     const imageUrl = ev.logo?.url ?? null;
 
     try {
+      const eventCity = cityName.slice(0, 100);
       const inserted = await db.insert(eventsTable).values({
         userId: bot.id,
         title,
@@ -166,7 +169,7 @@ export async function scrapeEventbriteEvents(city?: string): Promise<EventbriteS
         type: eventType,
         date: startDate,
         location: locationText.slice(0, 200),
-        city: cityName.slice(0, 100),
+        city: eventCity,
         imageUrl,
         source: "eventbrite",
         sourceUrl: ev.url,
@@ -174,6 +177,7 @@ export async function scrapeEventbriteEvents(city?: string): Promise<EventbriteS
 
       if (inserted.length > 0) {
         report.inserted++;
+        report.insertedEvents.push({ id: inserted[0].id, city: eventCity, title });
       } else {
         report.skippedDuplicates++;
       }

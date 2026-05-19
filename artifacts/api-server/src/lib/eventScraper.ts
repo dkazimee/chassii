@@ -124,12 +124,14 @@ export type ScrapeReport = {
   skippedNonEvent: number;
   skippedPast: number;
   errors: number;
+  insertedEvents: Array<{ id: number; city: string; title: string }>;
 };
 
 export async function scrapeRedditEvents(maxPosts = 60, city?: string): Promise<ScrapeReport> {
   const report: ScrapeReport = {
     fetched: 0, evaluated: 0, inserted: 0,
     skippedDuplicates: 0, skippedNonEvent: 0, skippedPast: 0, errors: 0,
+    insertedEvents: [],
   };
 
   const bot = await getOrCreateBotUser();
@@ -169,19 +171,22 @@ export async function scrapeRedditEvents(maxPosts = 60, city?: string): Promise<
       continue;
     }
     try {
+      const eventTitle = extracted.title.slice(0, 200);
+      const eventCity = extracted.city.slice(0, 100);
       const inserted = await db.insert(eventsTable).values({
         userId: bot.id,
-        title: extracted.title.slice(0, 200),
+        title: eventTitle,
         description: (extracted.description || "").slice(0, 1000),
         type: extracted.type || "other",
         date,
         location: extracted.location.slice(0, 200),
-        city: extracted.city.slice(0, 100),
+        city: eventCity,
         source: "reddit",
         sourceUrl,
       }).onConflictDoNothing({ target: eventsTable.sourceUrl }).returning({ id: eventsTable.id });
       if (inserted.length > 0) {
         report.inserted++;
+        report.insertedEvents.push({ id: inserted[0].id, city: eventCity, title: eventTitle });
       } else {
         report.skippedDuplicates++;
       }

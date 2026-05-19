@@ -3,6 +3,17 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 
+export const eventAlertPreferencesTable = pgTable("event_alert_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique().references(() => usersTable.id),
+  city: text("city").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type EventAlertPreference = typeof eventAlertPreferencesTable.$inferSelect;
+
 export const eventsTable = pgTable("events", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
