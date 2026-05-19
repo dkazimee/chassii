@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAuth } from "@clerk/express";
+import { requireAuth, getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { carsTable, carModsTable, usersTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -8,8 +8,9 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 const router = Router();
 
 // POST /api/ai/cars/:carId/chat
-// Streams an AI response based on the car's context and the user's messages
-router.post("/ai/cars/:carId/chat", async (req, res) => {
+// Streams an AI response based on the car's context and the user's messages.
+// Only the car's owner may use the AI mechanic.
+router.post("/ai/cars/:carId/chat", requireAuth(), async (req, res) => {
   try {
     const carId = Number(req.params.carId);
     const { messages } = req.body as {
@@ -21,6 +22,20 @@ router.post("/ai/cars/:carId/chat", async (req, res) => {
       return;
     }
 
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const me = await db.query.usersTable.findFirst({
+      where: eq(usersTable.clerkId, clerkId),
+    });
+    if (!me) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
     // Fetch car with its mods for context
     const car = await db.query.carsTable.findFirst({
       where: eq(carsTable.id, carId),
@@ -28,6 +43,11 @@ router.post("/ai/cars/:carId/chat", async (req, res) => {
 
     if (!car) {
       res.status(404).json({ error: "Car not found" });
+      return;
+    }
+
+    if (car.userId !== me.id) {
+      res.status(403).json({ error: "Only the owner can chat with the AI Mechanic for this car" });
       return;
     }
 

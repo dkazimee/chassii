@@ -117,7 +117,7 @@ export default function CarDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {/* Tabs: Story + Timeline | AI Mechanic */}
+          {/* Tabs: Story + Timeline | AI Mechanic (owner only) */}
           <Tabs defaultValue="journal" className="w-full">
             <TabsList className="w-full justify-start border-b border-gray-200 rounded-none bg-transparent p-0 mb-6 h-auto">
               <TabsTrigger
@@ -126,13 +126,16 @@ export default function CarDetailPage() {
               >
                 Journal
               </TabsTrigger>
-              <TabsTrigger
-                value="ai-mechanic"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 pb-3 pt-1 text-base font-semibold flex items-center gap-2"
-              >
-                <Bot className="h-4 w-4" />
-                AI Mechanic
-              </TabsTrigger>
+              {isOwner && (
+                <TabsTrigger
+                  value="ai-mechanic"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 pb-3 pt-1 text-base font-semibold flex items-center gap-2"
+                  data-testid="tab-ai-mechanic"
+                >
+                  <Bot className="h-4 w-4" />
+                  AI Mechanic
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="journal" className="mt-0 space-y-8">
@@ -234,11 +237,13 @@ export default function CarDetailPage() {
               </section>
             </TabsContent>
 
-            <TabsContent value="ai-mechanic" className="mt-0">
-              <div className="rounded-2xl overflow-hidden" style={{ height: "600px", display: "flex", flexDirection: "column" }}>
-                <AIMechanicChat car={car} />
-              </div>
-            </TabsContent>
+            {isOwner && (
+              <TabsContent value="ai-mechanic" className="mt-0">
+                <div className="rounded-2xl overflow-hidden" style={{ height: "600px", display: "flex", flexDirection: "column" }}>
+                  <AIMechanicChat car={car} />
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 
