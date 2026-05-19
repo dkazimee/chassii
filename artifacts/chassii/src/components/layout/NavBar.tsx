@@ -19,7 +19,21 @@ import { useQuery } from "@tanstack/react-query";
 
 export default function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+
+  const navLink = (href: string) => {
+    const active = location === href || (href !== "/" && location.startsWith(href));
+    return active
+      ? "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-primary text-sm font-bold"
+      : "text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium";
+  };
+
+  const mobileNavLink = (href: string) => {
+    const active = location === href || (href !== "/" && location.startsWith(href));
+    return active
+      ? "block pl-3 pr-4 py-2 border-l-4 border-primary text-base font-bold text-gray-900 hover:bg-gray-50"
+      : "block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300";
+  };
   const { signOut } = useClerk();
   const { user } = useUser();
   const { data: dbUser } = useGetMe({ query: { enabled: !!user } });
@@ -55,25 +69,25 @@ export default function NavBar() {
             <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
               {user && (
                 <>
-                  <Link href="/feed" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-primary text-sm font-bold" data-testid="link-home-nav">
+                  <Link href="/feed" className={navLink("/feed")} data-testid="link-home-nav">
                     Home
                   </Link>
-                  <Link href="/garage" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium" data-testid="link-garage-nav">
+                  <Link href="/garage" className={navLink("/garage")} data-testid="link-garage-nav">
                     My Garage
                   </Link>
                 </>
               )}
-              <Link href="/explore" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium">
+              <Link href="/explore" className={navLink("/explore")}>
                 Explore
               </Link>
-              <Link href="/discussions" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium">
+              <Link href="/discussions" className={navLink("/discussions")}>
                 Discussions
               </Link>
-              <Link href="/events" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium">
+              <Link href="/events" className={navLink("/events")}>
                 Events
               </Link>
               {isAdmin && (
-                <Link href="/admin" className="text-gray-500 hover:text-gray-900 inline-flex items-center gap-1.5 px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium" data-testid="link-admin-nav">
+                <Link href="/admin" className={`${navLink("/admin")} gap-1.5`} data-testid="link-admin-nav">
                   <Shield className="h-4 w-4" /> Admin
                 </Link>
               )}
@@ -172,25 +186,25 @@ export default function NavBar() {
           <div className="pt-2 pb-3 space-y-1">
             {user && (
               <>
-                <Link href="/feed" className="block pl-3 pr-4 py-2 border-l-4 border-primary text-base font-bold text-gray-900 hover:bg-gray-50">
+                <Link href="/feed" className={mobileNavLink("/feed")}>
                   Home
                 </Link>
-                <Link href="/garage" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">
+                <Link href="/garage" className={mobileNavLink("/garage")}>
                   My Garage
                 </Link>
               </>
             )}
-            <Link href="/explore" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">
+            <Link href="/explore" className={mobileNavLink("/explore")}>
               Explore
             </Link>
-            <Link href="/discussions" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">
+            <Link href="/discussions" className={mobileNavLink("/discussions")}>
               Discussions
             </Link>
-            <Link href="/events" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">
+            <Link href="/events" className={mobileNavLink("/events")}>
               Events
             </Link>
             {isAdmin && (
-              <Link href="/admin" className="pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2">
+              <Link href="/admin" className={`${mobileNavLink("/admin")} flex items-center gap-2`}>
                 <Shield className="h-4 w-4" /> Admin
               </Link>
             )}
