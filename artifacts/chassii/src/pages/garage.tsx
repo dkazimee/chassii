@@ -20,6 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ImageUploader } from "@/components/ImageUploader";
 import { CarCombobox } from "@/components/CarCombobox";
 import { CAR_MAKES, MODELS_BY_MAKE, CAR_YEARS } from "@/data/car-data";
+import { EditCarDialog } from "@/components/EditCarDialog";
+import type { Car } from "@workspace/api-client-react";
 
 const MOD_CATEGORIES = [
   "Engine", "Exhaust", "Intake", "Turbo / Supercharger",
@@ -65,6 +67,7 @@ export default function GaragePage() {
   });
 
   const [isAddCarOpen, setIsAddCarOpen] = useState(false);
+  const [editingCar, setEditingCar] = useState<Car | null>(null);
   const [mods, setMods] = useState<ModEntry[]>([]);
   const [modDraft, setModDraft] = useState<ModEntry>({ name: "", category: "", brand: "", notes: "" });
   const [showModForm, setShowModForm] = useState(false);
@@ -484,7 +487,13 @@ export default function GaragePage() {
                   <Link href={`/cars/${car.id}`}>
                     <Button variant="outline" className="w-full rounded-full">View Journal</Button>
                   </Link>
-                  <Button variant="ghost" size="icon" className="rounded-full shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full shrink-0"
+                    onClick={() => setEditingCar(car)}
+                    aria-label="Edit car"
+                  >
                     <Settings className="h-4 w-4" />
                   </Button>
                 </div>
@@ -503,6 +512,13 @@ export default function GaragePage() {
           </p>
         </div>
       )}
+
+      <EditCarDialog
+        car={editingCar}
+        open={!!editingCar}
+        onOpenChange={(open) => { if (!open) setEditingCar(null); }}
+        userId={user?.id}
+      />
     </div>
   );
 }
