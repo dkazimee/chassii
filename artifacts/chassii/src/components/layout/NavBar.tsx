@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser } from "@clerk/react";
 import { SignedIn, SignedOut } from "@/components/auth/ConditionalAuth";
-import { Search, Bell, Menu, X, Car, User, Settings, LogOut } from "lucide-react";
+import { Search, Bell, Menu, X, Car, User, Settings, LogOut, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { useGetNotifications, useGetMe, getGetNotificationsQueryKey } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 
 export default function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -23,6 +24,16 @@ export default function NavBar() {
   const { user } = useUser();
   const { data: dbUser } = useGetMe({ query: { enabled: !!user } });
   const { data: notifications } = useGetNotifications({ limit: 5 }, { query: { enabled: !!user, queryKey: getGetNotificationsQueryKey({ limit: 5 }) } });
+  const { data: adminInfo } = useQuery({
+    queryKey: ["admin-me"],
+    enabled: !!user,
+    queryFn: async () => {
+      const r = await fetch("/api/admin/me", { credentials: "include" });
+      if (!r.ok) return { isAdmin: false };
+      return (await r.json()) as { isAdmin: boolean };
+    },
+  });
+  const isAdmin = !!adminInfo?.isAdmin;
 
   const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
 
@@ -54,6 +65,11 @@ export default function NavBar() {
               <Link href="/map" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium" data-testid="link-map-nav">
                 Map
               </Link>
+              {isAdmin && (
+                <Link href="/admin" className="text-gray-500 hover:text-gray-900 inline-flex items-center gap-1.5 px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium" data-testid="link-admin-nav">
+                  <Shield className="h-4 w-4" /> Admin
+                </Link>
+              )}
             </div>
           </div>
           
@@ -112,6 +128,12 @@ export default function NavBar() {
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => setLocation("/admin")} data-testid="menu-admin">
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>Admin</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut({ redirectUrl: "/" })}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -150,6 +172,11 @@ export default function NavBar() {
             <Link href="/events" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">
               Events
             </Link>
+            {isAdmin && (
+              <Link href="/admin" className="pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2">
+                <Shield className="h-4 w-4" /> Admin
+              </Link>
+            )}
           </div>
           
           <SignedOut>
