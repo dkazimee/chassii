@@ -219,7 +219,7 @@ export default function SettingsPage() {
                       </div>
                     </FormControl>
                     <p className="text-xs text-gray-500 mt-1.5">
-                      Used to place you on the community map. A general neighborhood or city is enough — no street address needed.
+                      Used to place you on the community map within a <strong>~10 mile vicinity</strong>. Your exact address is never stored or shown — even if you enter a full street address, we round your spot to a wide area so other members only see your general region.
                     </p>
                     <FormMessage />
                   </FormItem>

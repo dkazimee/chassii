@@ -13,10 +13,13 @@ const router = Router();
 
 const NOMINATIM_UA = "CHASSII Social Network (https://chassii-social-network.replit.app)";
 
-// Quantize coords to ~1km grid (2 decimal places) so a member's exact home/work
-// address is never exposed even if they accidentally enter a street address.
+// Quantize coords to a ~10-mile grid (~0.15°) so a member's exact home/work
+// address is never exposed even if they enter a full street address. All
+// addresses within the same ~10mi cell collapse to the same display point on
+// the community map.
+const FUZZ_GRID_DEGREES = 0.15;
 function fuzzCoord(n: number): number {
-  return Math.round(n * 100) / 100;
+  return Math.round(n / FUZZ_GRID_DEGREES) * FUZZ_GRID_DEGREES;
 }
 
 async function geocodeLocation(query: string): Promise<{ lat: number; lon: number } | null> {
