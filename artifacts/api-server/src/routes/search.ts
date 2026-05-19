@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { usersTable, carsTable, postsTable } from "@workspace/db";
-import { eq, sql, desc, ilike, or } from "drizzle-orm";
+import { usersTable, carsTable, postsTable, userFollowsTable } from "@workspace/db";
+import { eq, sql, desc, ilike, or, and, inArray } from "drizzle-orm";
 import { formatUser } from "./users";
 
 const router = Router();
@@ -76,16 +76,55 @@ router.get("/search", async (req, res) => {
 // GET /api/discover/garages
 router.get("/discover/garages", async (req, res) => {
   try {
-    const { sort = "recently_active", make, location, limit = "12" } = req.query as Record<string, string>;
+    const { limit = "12" } = req.query as Record<string, string>;
+    const lim = parseInt(limit);
 
     const users = await db.select().from(usersTable)
       .orderBy(desc(usersTable.createdAt))
-      .limit(parseInt(limit));
+      .limit(lim);
 
-    return res.json(users.map(u => ({
-      ...formatUser(u),
-      cars: [], followerCount: 0, followingCount: 0, carCount: 0, postCount: 0, iFollowThem: false,
-    })));
+    if (users.length === 0) return res.json([]);
+
+    const userIds = users.map(u => u.id);
+    const allCars = await db.select({
+      id: carsTable.id,
+      userId: carsTable.userId,
+      make: carsTable.make,
+      model: carsTable.model,
+      year: carsTable.year,
+      mainImageUrl: carsTable.mainImageUrl,
+    }).from(carsTable)
+      .where(and(inArray(carsTable.userId, userIds), eq(carsTable.isPublic, true)))
+      .orderBy(desc(carsTable.updatedAt));
+
+    const carsByUser = new Map<number, typeof allCars>();
+    for (const car of allCars) {
+      const list = carsByUser.get(car.userId) ?? [];
+      list.push(car);
+      carsByUser.set(car.userId, list);
+    }
+
+    const followerCounts = await db.select({
+      followingId: userFollowsTable.followingId,
+      count: sql<number>`count(*)::int`,
+    }).from(userFollowsTable)
+      .where(inArray(userFollowsTable.followingId, userIds))
+      .groupBy(userFollowsTable.followingId);
+
+    const followerMap = new Map(followerCounts.map(r => [r.followingId, r.count]));
+
+    return res.json(users.map(u => {
+      const cars = carsByUser.get(u.id) ?? [];
+      return {
+        ...formatUser(u),
+        cars: cars.slice(0, 4),
+        followerCount: followerMap.get(u.id) ?? 0,
+        followingCount: 0,
+        carCount: cars.length,
+        postCount: 0,
+        iFollowThem: false,
+      };
+    }));
   } catch (err) {
     req.log.error({ err }, "Error discovering garages");
     return res.status(500).json({ error: "Internal server error" });

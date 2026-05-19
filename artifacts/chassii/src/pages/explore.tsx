@@ -73,27 +73,53 @@ export default function ExplorePage() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isGaragesLoading ? (
-            [1,2,3].map(i => <Skeleton key={i} className="h-48 w-full rounded-3xl" />)
-          ) : garages?.map(garage => (
+            [1,2,3].map(i => <Skeleton key={i} className="h-64 w-full rounded-3xl" />)
+          ) : garages?.map((garage: any) => (
             <Link key={garage.id} href={`/users/${garage.id}`}>
               <Card className="rounded-3xl border-gray-100 hover:shadow-lg transition-shadow cursor-pointer overflow-hidden group">
                 <div className="h-20 bg-gray-900 relative">
-                   {garage.coverUrl && <img src={garage.coverUrl} className="w-full h-full object-cover opacity-60" alt="Cover" />}
+                  {garage.coverUrl && <img src={garage.coverUrl} className="w-full h-full object-cover opacity-60" alt="Cover" />}
                 </div>
-                <CardContent className="p-6 relative pt-0">
-                  <Avatar className="h-16 w-16 border-4 border-white absolute -top-8 shadow-sm">
-                    <AvatarImage src={garage.avatarUrl || ''} />
-                    <AvatarFallback>{garage.displayName.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="mt-10">
-                    <h3 className="font-bold text-lg text-gray-900 group-hover:text-primary transition-colors">{garage.displayName}</h3>
-                    <p className="text-sm text-gray-500">@{garage.username}</p>
-                    
-                    <div className="flex items-center justify-between mt-4 text-sm">
-                      <span className="font-medium text-gray-700">{garage.carCount} cars</span>
-                      <span className="text-gray-500">{garage.followerCount} followers</span>
+                <CardContent className="p-5 pt-0">
+                  {/* Avatar row — sits below the cover, no absolute overlap */}
+                  <div className="flex items-end gap-3 -mt-8 mb-3">
+                    <Avatar className="h-16 w-16 border-4 border-white shadow-sm flex-shrink-0">
+                      <AvatarImage src={garage.avatarUrl || ''} />
+                      <AvatarFallback>{garage.displayName.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="pb-1 min-w-0">
+                      <h3 className="font-bold text-base text-gray-900 group-hover:text-primary transition-colors truncate leading-tight">{garage.displayName}</h3>
+                      <p className="text-xs text-gray-500 truncate">@{garage.username}</p>
                     </div>
                   </div>
+
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                    <span className="font-medium text-gray-700">{garage.carCount ?? garage.cars?.length ?? 0} cars</span>
+                    <span>{garage.followerCount ?? 0} followers</span>
+                  </div>
+
+                  {/* Mini garage */}
+                  {garage.cars && garage.cars.length > 0 && (
+                    <div className="space-y-1.5 border-t border-gray-100 pt-3">
+                      {garage.cars.slice(0, 3).map((car: any) => (
+                        <div key={car.id} className="flex items-center gap-2">
+                          <div className="h-8 w-10 rounded bg-gray-100 overflow-hidden flex-shrink-0">
+                            {car.mainImageUrl ? (
+                              <img src={car.mainImageUrl} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <CarIcon className="h-4 w-4 text-gray-300" />
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-700 truncate">{car.year} {car.make} {car.model}</span>
+                        </div>
+                      ))}
+                      {garage.cars.length > 3 && (
+                        <p className="text-xs text-gray-400 pl-12">+{garage.cars.length - 3} more</p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </Link>
