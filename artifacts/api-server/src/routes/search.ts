@@ -23,8 +23,15 @@ router.get("/search", async (req, res) => {
         .where(or(ilike(carsTable.make, searchTerm), ilike(carsTable.model, searchTerm)))
         .limit(10) : Promise.resolve([]),
 
-      (type === "all" || type === "users") ? db.select().from(usersTable)
-        .where(or(ilike(usersTable.username, searchTerm), ilike(usersTable.displayName, searchTerm)))
+      (type === "all" || type === "users") ? db.selectDistinctOn([usersTable.id], { user: usersTable })
+        .from(usersTable)
+        .leftJoin(carsTable, eq(carsTable.userId, usersTable.id))
+        .where(or(
+          ilike(usersTable.username, searchTerm),
+          ilike(usersTable.displayName, searchTerm),
+          ilike(carsTable.make, searchTerm),
+          ilike(carsTable.model, searchTerm),
+        ))
         .limit(10) : Promise.resolve([]),
 
       (type === "all" || type === "posts") ? db.select({ post: postsTable, author: usersTable })
@@ -43,10 +50,13 @@ router.get("/search", async (req, res) => {
         isPublic: r.car.isPublic, followerCount: 0, iFollow: false,
         owner: formatUser(r.user), createdAt: r.car.createdAt,
       })),
-      users: (users as any[]).map((u: any) => ({
-        ...formatUser(u),
-        cars: [], followerCount: 0, followingCount: 0, carCount: 0, postCount: 0, iFollowThem: false,
-      })),
+      users: (users as any[]).map((row: any) => {
+        const u = row.user ?? row;
+        return {
+          ...formatUser(u),
+          cars: [], followerCount: 0, followingCount: 0, carCount: 0, postCount: 0, iFollowThem: false,
+        };
+      }),
       posts: (posts as any[]).map((r: any) => ({
         id: r.post.id, userId: r.post.userId, carId: r.post.carId ?? null,
         title: r.post.title, body: r.post.body, category: r.post.category,
