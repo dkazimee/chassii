@@ -6,7 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
-import { Car, MessageSquare, ThumbsUp, Wrench } from "lucide-react";
+import { Car, Wrench } from "lucide-react";
+import { PostActions } from "@/components/PostActions";
 import { FeedFilters, EMPTY_FILTERS, type FeedFilterValues } from "@/components/FeedFilters";
 import { useLightbox } from "@/components/Lightbox";
 
@@ -61,9 +62,14 @@ export default function FeedPage() {
                     <p className="text-gray-600 line-clamp-3 mb-4">{item.post.body}</p>
                   )}
                 </Link>
-                <div className="flex items-center gap-6 text-sm text-gray-500">
-                  <span className="flex items-center gap-1"><ThumbsUp className="h-4 w-4" /> {item.post.likeCount || 0}</span>
-                  <span className="flex items-center gap-1"><MessageSquare className="h-4 w-4" /> {item.post.commentCount || 0}</span>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <PostActions
+                    postId={item.post.id}
+                    likeCount={item.post.likeCount || 0}
+                    commentCount={item.post.commentCount || 0}
+                    isLiked={!!item.post.isLiked}
+                    size="sm"
+                  />
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                     {item.post.category}
                   </span>
