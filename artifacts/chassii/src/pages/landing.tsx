@@ -32,29 +32,21 @@ export default function LandingPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="relative">
-        <div className="absolute inset-0 h-[80vh] w-full">
-          <img 
-            src="/hero.png" 
-            alt="Cinematic sports car in garage" 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background to-background/20" />
-        </div>
-        
-        <div className="relative pt-32 pb-20 sm:pt-40 sm:pb-24 lg:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto h-[80vh] flex flex-col justify-end">
+      <div className="relative bg-gradient-to-b from-gray-950 via-gray-900 to-background">
+        <div className="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto min-h-[90vh] flex flex-col items-center justify-center pt-24 pb-16 text-center">
           <img
-            src="/chassii-logo.png"
-            alt="CHASSII — Your Cars. Your Story. Your Community."
-            className="w-56 sm:w-72 mb-8 drop-shadow-xl"
+            src="/chassii-logo-transparent.png"
+            alt="CHASSII"
+            className="w-[60%] max-w-xl drop-shadow-2xl mb-6 sm:mb-8"
+            data-testid="img-hero-logo"
           />
-          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-white max-w-3xl drop-shadow-md">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white max-w-3xl drop-shadow-md">
             Your garage deserves more than a forum thread.
           </h1>
           <p className="mt-6 text-xl text-gray-200 max-w-2xl drop-shadow">
             CHASSII is a modern community for car enthusiasts to showcase builds, document ownership, ask questions, and connect with drivers locally or nationwide.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row gap-4">
+          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="text-lg px-8 py-6 rounded-full font-bold" onClick={() => setLocation("/sign-up")}>
               Create Your Garage
             </Button>
