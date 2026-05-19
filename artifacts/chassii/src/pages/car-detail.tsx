@@ -252,18 +252,18 @@ export default function CarDetailPage() {
           {car.owner && (
             <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden">
               <div className="h-24 bg-gradient-to-r from-red-600 to-red-900" />
-              <CardContent className="px-6 pb-6 pt-0 relative">
-                <Avatar className="h-20 w-20 border-4 border-white absolute -top-10 shadow-sm">
+              <CardContent className="px-6 pb-6 pt-0 flex flex-col items-center text-center">
+                <Avatar className="h-20 w-20 border-4 border-white -mt-10 shadow-sm">
                   <AvatarImage src={car.owner.avatarUrl || ''} />
                   <AvatarFallback>{car.owner.displayName?.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <div className="mt-12">
-                  <h3 className="text-xl font-bold text-gray-900">{car.owner.displayName}</h3>
-                  <Link href={`/users/${car.owner.id}`} className="text-sm text-gray-500 hover:text-primary flex items-center mt-1">
+                <div className="mt-3 w-full">
+                  <h3 className="text-xl font-bold text-gray-900 truncate" data-testid="text-owner-name">{car.owner.displayName}</h3>
+                  <Link href={`/users/${car.owner.id}`} className="text-sm text-gray-500 hover:text-primary inline-flex items-center mt-1">
                     @{car.owner.username} <ChevronRight className="h-3 w-3 ml-1" />
                   </Link>
                   {car.owner.location && (
-                    <div className="flex items-center gap-1 text-sm text-gray-600 mt-4">
+                    <div className="flex items-center justify-center gap-1 text-sm text-gray-600 mt-4">
                       <MapPin className="h-4 w-4" /> {car.owner.location}
                     </div>
                   )}
