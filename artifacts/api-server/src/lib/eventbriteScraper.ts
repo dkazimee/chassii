@@ -11,6 +11,7 @@ type EventbriteEvent = {
   description: { text: string | null };
   start: { utc: string };
   url: string;
+  logo?: { url: string | null } | null;
   venue?: {
     name: string | null;
     address: {
@@ -49,7 +50,7 @@ async function fetchEventbriteEvents(city?: string): Promise<EventbriteEvent[]> 
     try {
       const url = new URL(`${EVENTBRITE_API_BASE}/events/search/`);
       url.searchParams.set("q", keyword);
-      url.searchParams.set("expand", "venue");
+      url.searchParams.set("expand", "venue,logo");
       url.searchParams.set("start_date.keyword", "this_month");
       url.searchParams.set("sort_by", "date");
       url.searchParams.set("page_size", "20");
@@ -155,6 +156,8 @@ export async function scrapeEventbriteEvents(city?: string): Promise<EventbriteS
     const description = (ev.description?.text || "").slice(0, 1000);
     const eventType = mapEventType(title, description);
 
+    const imageUrl = ev.logo?.url ?? null;
+
     try {
       const inserted = await db.insert(eventsTable).values({
         userId: bot.id,
@@ -164,6 +167,7 @@ export async function scrapeEventbriteEvents(city?: string): Promise<EventbriteS
         date: startDate,
         location: locationText.slice(0, 200),
         city: cityName.slice(0, 100),
+        imageUrl,
         source: "eventbrite",
         sourceUrl: ev.url,
       }).onConflictDoNothing({ target: eventsTable.sourceUrl }).returning({ id: eventsTable.id });
