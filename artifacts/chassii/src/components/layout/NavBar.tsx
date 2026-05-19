@@ -55,15 +55,15 @@ export default function NavBar() {
             <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
               {user && (
                 <>
-                  <Link href="/feed" className="text-gray-500 hover:text-gray-900 inline-flex items-center gap-1.5 px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium" data-testid="link-feed-nav">
-                    <Rss className="h-4 w-4" /> Feed
+                  <Link href="/feed" className="text-gray-900 inline-flex items-center gap-1.5 px-1 pt-1 border-b-2 border-transparent hover:border-primary text-sm font-bold" data-testid="link-home-nav">
+                    <Rss className="h-4 w-4" /> Home
                   </Link>
                   <Link href="/garage" className="text-gray-500 hover:text-gray-900 inline-flex items-center gap-1.5 px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium" data-testid="link-garage-nav">
                     <Car className="h-4 w-4" /> My Garage
                   </Link>
                 </>
               )}
-              <Link href="/explore" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-primary text-sm font-medium">
+              <Link href="/explore" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium">
                 Explore
               </Link>
               <Link href="/discussions" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium">
@@ -175,8 +175,8 @@ export default function NavBar() {
           <div className="pt-2 pb-3 space-y-1">
             {user && (
               <>
-                <Link href="/feed" className="pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2">
-                  <Rss className="h-4 w-4" /> Feed
+                <Link href="/feed" className="pl-3 pr-4 py-2 border-l-4 border-primary text-base font-bold text-gray-900 hover:bg-gray-50 flex items-center gap-2">
+                  <Rss className="h-4 w-4" /> Home
                 </Link>
                 <Link href="/garage" className="pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2">
                   <Car className="h-4 w-4" /> My Garage
