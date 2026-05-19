@@ -93,10 +93,26 @@ router.patch("/users/me", requireAuth(), async (req, res) => {
     if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
 
     const user = await getOrCreateUser(clerkId);
-    const { displayName, bio, location, avatarUrl, coverUrl } = req.body;
+    const { displayName, bio, location, avatarUrl, coverUrl, username } = req.body;
+
+    if (username && username !== user.username) {
+      const taken = await db.query.usersTable.findFirst({
+        where: and(eq(usersTable.username, username), ne(usersTable.id, user.id)),
+      });
+      if (taken) {
+        return res.status(409).json({ error: "Username is already taken" });
+      }
+    }
 
     const [updated] = await db.update(usersTable)
-      .set({ displayName, bio, location, avatarUrl, coverUrl })
+      .set({
+        ...(displayName !== undefined && { displayName }),
+        ...(bio !== undefined && { bio }),
+        ...(location !== undefined && { location }),
+        ...(avatarUrl !== undefined && { avatarUrl }),
+        ...(coverUrl !== undefined && { coverUrl }),
+        ...(username !== undefined && { username }),
+      })
       .where(eq(usersTable.id, user.id))
       .returning();
 

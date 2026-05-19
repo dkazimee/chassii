@@ -14,13 +14,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
-import { useGetNotifications, getGetNotificationsQueryKey } from "@workspace/api-client-react";
+import { useGetNotifications, useGetMe, getGetNotificationsQueryKey } from "@workspace/api-client-react";
 
 export default function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { signOut } = useClerk();
   const { user } = useUser();
+  const { data: dbUser } = useGetMe({ query: { enabled: !!user } });
   const { data: notifications } = useGetNotifications({ limit: 5 }, { query: { enabled: !!user, queryKey: getGetNotificationsQueryKey({ limit: 5 }) } });
 
   const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
@@ -100,7 +101,7 @@ export default function NavBar() {
                     <Car className="mr-2 h-4 w-4" />
                     <span>My Garage</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation(`/users/${user?.id}`)}>
+                  <DropdownMenuItem onClick={() => dbUser?.id && setLocation(`/users/${dbUser.id}`)}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>

@@ -4,6 +4,8 @@ import { SignedIn, SignedOut } from '@/components/auth/ConditionalAuth';
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from 'wouter';
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { QueryClient } from "@tanstack/react-query";
+import { useGetMe } from "@workspace/api-client-react";
+import { useAuth } from "@clerk/react";
 
 import LandingPage from "@/pages/landing";
 import FeedPage from "@/pages/feed";
@@ -19,6 +21,7 @@ import SettingsPage from "@/pages/settings";
 import UserProfilePage from "@/pages/user-profile";
 import CarDetailPage from "@/pages/car-detail";
 import AdminPage from "@/pages/admin";
+import OnboardingPage from "@/pages/onboarding";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +81,21 @@ function SignUpPage() {
   );
 }
 
+function OnboardingGuard({ children }: { children: React.ReactNode }) {
+  const { isSignedIn } = useAuth();
+  const { data: dbUser, isLoading } = useGetMe({ query: { enabled: !!isSignedIn } });
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isSignedIn || isLoading || location === "/onboarding") return;
+    if (dbUser && /^user_[a-z0-9]+$/i.test(dbUser.displayName)) {
+      setLocation("/onboarding");
+    }
+  }, [isSignedIn, isLoading, dbUser, location, setLocation]);
+
+  return <>{children}</>;
+}
+
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const queryClient = useQueryClient();
@@ -135,10 +153,12 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        <OnboardingGuard>
         <Switch>
           <Route path="/" component={HomeRedirect} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/onboarding"><ProtectedRoute component={OnboardingPage} /></Route>
           <Route path="/feed"><Layout><ProtectedRoute component={FeedPage} /></Layout></Route>
           <Route path="/garage"><Layout><ProtectedRoute component={GaragePage} /></Layout></Route>
           <Route path="/explore"><Layout><ExplorePage /></Layout></Route>
@@ -157,6 +177,7 @@ function ClerkProviderWithRoutes() {
             </div>
           </Route>
         </Switch>
+        </OnboardingGuard>
       </QueryClientProvider>
     </ClerkProvider>
   );
