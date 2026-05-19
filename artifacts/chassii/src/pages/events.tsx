@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, MapPin, Users, ExternalLink, Search, Bot, X } from "lucide-react";
+import { Calendar, MapPin, Users, ExternalLink, Search, Bot, RefreshCw, X } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -28,34 +27,59 @@ type ScrapedEvent = {
   organizer: { id: number; username: string; displayName: string; avatarUrl: string | null };
 };
 
-type CityRow = { city: string; count: number };
+function SourceBadge({ source }: { source: string | null }) {
+  if (!source) return null;
+  const isEventbrite = source === "eventbrite";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+        isEventbrite
+          ? "bg-orange-100 text-orange-700"
+          : "bg-blue-100 text-blue-700"
+      }`}
+    >
+      {isEventbrite ? "Eventbrite" : "Reddit"}
+    </span>
+  );
+}
 
 export default function EventsPage() {
-  const [cityFilter, setCityFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState("");
+  const [debouncedCity, setDebouncedCity] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [scrapeCity, setScrapeCity] = useState("");
+  const [isScraping, setIsScraping] = useState(false);
   const rsvpEvent = useRsvpEvent();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const { data: adminInfo } = useQuery({
+    queryKey: ["admin", "me"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/me", { credentials: "include" });
+      if (!r.ok) return { isAdmin: false };
+      return (await r.json()) as { isAdmin: boolean };
+    },
+    retry: false,
+  });
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
     return () => clearTimeout(t);
   }, [searchInput]);
 
   useEffect(() => {
-    fetch("/api/admin/events/scrape", { method: "POST", credentials: "include" })
-      .then((r) => r.ok && queryClient.invalidateQueries({ queryKey: ["events"] }))
-      .catch(() => {});
-  }, []);
-
-  const cityParam = cityFilter !== "all" ? cityFilter : "";
+    const t = setTimeout(() => setDebouncedCity(cityFilter.trim()), 400);
+    return () => clearTimeout(t);
+  }, [cityFilter]);
 
   const { data: allEvents, isLoading } = useQuery({
-    queryKey: ["events", { city: cityParam }],
+    queryKey: ["events", { city: debouncedCity }],
     queryFn: async () => {
       const url = new URL("/api/events", window.location.origin);
-      if (cityParam) url.searchParams.set("city", cityParam);
-      url.searchParams.set("limit", "40");
+      if (debouncedCity) url.searchParams.set("city", debouncedCity);
+      url.searchParams.set("limit", "60");
       const r = await fetch(url.toString(), { credentials: "include" });
       if (!r.ok) throw new Error("Failed to load events");
       return (await r.json()) as ScrapedEvent[];
@@ -78,15 +102,6 @@ export default function EventsPage() {
     );
   })();
 
-  const { data: cities } = useQuery({
-    queryKey: ["events", "cities"],
-    queryFn: async () => {
-      const r = await fetch("/api/events/cities");
-      if (!r.ok) return [] as CityRow[];
-      return (await r.json()) as CityRow[];
-    },
-  });
-
   const handleRsvp = (eventId: number) => {
     rsvpEvent.mutate({ eventId }, {
       onSuccess: (data) => {
@@ -96,12 +111,44 @@ export default function EventsPage() {
     });
   };
 
+  async function handleScrape() {
+    setIsScraping(true);
+    try {
+      const body: Record<string, string> = {};
+      if (scrapeCity.trim()) body.city = scrapeCity.trim();
+      const r = await fetch("/api/admin/events/scrape", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.error || "Scrape failed");
+      const report = json.report;
+      const inserted = report?.totalInserted ?? report?.inserted ?? 0;
+      const fetched = report?.totalFetched ?? report?.fetched ?? 0;
+      const redditInserted = report?.reddit?.inserted ?? 0;
+      const ebInserted = report?.eventbrite?.inserted ?? 0;
+      toast({
+        title: `Found ${inserted} new event${inserted !== 1 ? "s" : ""}`,
+        description: `Scanned ${fetched} posts — Reddit: ${redditInserted}, Eventbrite: ${ebInserted}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    } catch (err) {
+      toast({ title: "Scrape failed", description: String(err), variant: "destructive" });
+    } finally {
+      setIsScraping(false);
+    }
+  }
+
+  const effectiveCity = debouncedCity || debouncedSearch;
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Events & Meets</h1>
-          <p className="text-gray-500 mt-2">Local cars and coffee, track days, cruises — plus events auto-discovered from across the web.</p>
+          <p className="text-gray-500 mt-2">Local cars and coffee, track days, cruises — plus events auto-discovered from Reddit and Eventbrite.</p>
         </div>
         <div className="flex items-center gap-2">
           <SignedIn>
@@ -119,7 +166,7 @@ export default function EventsPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9 pr-9"
-            data-testid="input-event-city-search"
+            data-testid="input-event-search"
           />
           {searchInput && (
             <button
@@ -131,20 +178,53 @@ export default function EventsPage() {
             </button>
           )}
         </div>
-        <Select value={cityFilter} onValueChange={setCityFilter}>
-          <SelectTrigger className="w-full sm:w-64" data-testid="select-event-city">
-            <SelectValue placeholder="All cities" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All cities</SelectItem>
-            {cities?.map(c => (
-              <SelectItem key={c.city} value={c.city}>
-                {c.city} <span className="text-gray-400 ml-1">({c.count})</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="relative w-full sm:w-56">
+          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Near me (city, e.g. Austin, TX)"
+            value={cityFilter}
+            onChange={(e) => setCityFilter(e.target.value)}
+            className="pl-9 pr-9"
+            data-testid="input-event-city-search"
+          />
+          {cityFilter && (
+            <button
+              onClick={() => setCityFilter("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+              aria-label="Clear city"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Admin scrape panel */}
+      {adminInfo?.isAdmin && (
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+          <div className="relative flex-1">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Target city for refresh (optional)"
+              value={scrapeCity}
+              onChange={(e) => setScrapeCity(e.target.value)}
+              className="pl-9"
+              data-testid="input-scrape-city"
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleScrape}
+            disabled={isScraping}
+            data-testid="button-scrape-events"
+            className="rounded-full whitespace-nowrap"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isScraping ? "animate-spin" : ""}`} />
+            {isScraping ? "Scanning…" : "Refresh from Web"}
+          </Button>
+          <p className="text-xs text-gray-400 sm:w-48">Auto-refreshes every 6 hours. Use this to trigger an on-demand scan.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {isLoading ? (
@@ -164,13 +244,14 @@ export default function EventsPage() {
                   {format(new Date(event.date), 'MMM d, h:mm a')}
                 </div>
                 {event.source && (
-                  <div className="absolute top-4 left-4 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                    <Bot className="h-3 w-3" /> via {event.source}
+                  <div className="absolute top-4 left-4 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+                    <Bot className="h-3 w-3" />
+                    <SourceBadge source={event.source} />
                   </div>
                 )}
               </div>
               <CardContent className="p-6 flex-1 flex flex-col">
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
                   <Badge variant="outline">{event.type.replace('_', ' ')}</Badge>
                   {event.city && <Badge variant="secondary">{event.city}</Badge>}
                 </div>
@@ -216,7 +297,7 @@ export default function EventsPage() {
             <p className="mt-2 text-gray-500">
               {effectiveCity
                 ? `No upcoming events match "${effectiveCity}". Try clearing the filter.`
-                : "Check back later or create your own event."}
+                : "Check back later, create your own, or ask an admin to refresh from the web."}
             </p>
           </div>
         )}

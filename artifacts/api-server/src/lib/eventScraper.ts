@@ -12,6 +12,11 @@ const SUBREDDITS_AND_QUERIES: Array<{ sub: string; q: string }> = [
   { sub: "Cartalk", q: "meet OR event" },
   { sub: "projectcar", q: "meet OR event OR show" },
   { sub: "spotted", q: "meet OR event" },
+  { sub: "CarMeetUp", q: "meet OR event OR show OR cruise" },
+  { sub: "AutoEnthusiasts", q: "meet OR event OR show" },
+  { sub: "classiccars", q: "meet OR show OR event" },
+  { sub: "Trucks", q: "meet OR show OR event" },
+  { sub: "motorcycles", q: "meet OR rally OR event" },
 ];
 
 type RedditPost = {
@@ -24,15 +29,16 @@ type RedditPost = {
   subreddit: string;
 };
 
-async function fetchRedditPosts(): Promise<RedditPost[]> {
+async function fetchRedditPosts(cityHint?: string): Promise<RedditPost[]> {
   const all: RedditPost[] = [];
   for (const { sub, q } of SUBREDDITS_AND_QUERIES) {
     try {
+      const query = cityHint ? `${q} ${cityHint}` : q;
       const url = new URL(`https://www.reddit.com/r/${sub}/search.json`);
-      url.searchParams.set("q", q);
+      url.searchParams.set("q", query);
       url.searchParams.set("restrict_sr", "true");
       url.searchParams.set("sort", "new");
-      url.searchParams.set("limit", "15");
+      url.searchParams.set("limit", "25");
       url.searchParams.set("t", "month");
       const r = await fetch(url.toString(), { headers: { "User-Agent": REDDIT_UA } });
       if (!r.ok) continue;
@@ -120,14 +126,14 @@ export type ScrapeReport = {
   errors: number;
 };
 
-export async function scrapeRedditEvents(maxPosts = 40): Promise<ScrapeReport> {
+export async function scrapeRedditEvents(maxPosts = 60, city?: string): Promise<ScrapeReport> {
   const report: ScrapeReport = {
     fetched: 0, evaluated: 0, inserted: 0,
     skippedDuplicates: 0, skippedNonEvent: 0, skippedPast: 0, errors: 0,
   };
 
   const bot = await getOrCreateBotUser();
-  const posts = await fetchRedditPosts();
+  const posts = await fetchRedditPosts(city);
   report.fetched = posts.length;
 
   // Dedupe by permalink upfront
