@@ -42,7 +42,12 @@ export default function DiscussionsPage() {
     return posts.filter((p) =>
       p.title.toLowerCase().includes(q) ||
       (p.body ?? "").toLowerCase().includes(q) ||
-      (p.tags ?? []).some((t) => t.toLowerCase().includes(q)),
+      (p.tags ?? []).some((t) => t.toLowerCase().includes(q)) ||
+      (p.category ?? "").toLowerCase().includes(q) ||
+      (p.make ?? "").toLowerCase().includes(q) ||
+      (p.model ?? "").toLowerCase().includes(q) ||
+      (p.author?.displayName ?? "").toLowerCase().includes(q) ||
+      (p.author?.username ?? "").toLowerCase().includes(q),
     );
   }, [posts, search]);
 
