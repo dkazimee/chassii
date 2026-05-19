@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { usersTable, eventsTable, eventRsvpsTable } from "@workspace/db";
 import { eq, and, sql, asc, ilike, isNotNull } from "drizzle-orm";
 import { getOrCreateUser, formatUser } from "./users";
+import { geocodeCity } from "../geocode";
 
 const router = Router();
 
@@ -19,6 +20,8 @@ function formatEvent(e: typeof eventsTable.$inferSelect, organizer: typeof users
     title: e.title, description: e.description ?? null,
     type: e.type, date: e.date, location: e.location,
     city: e.city ?? null,
+    lat: e.lat ?? null,
+    lng: e.lng ?? null,
     imageUrl: e.imageUrl ?? null,
     source: e.source ?? null,
     sourceUrl: e.sourceUrl ?? null,
@@ -26,6 +29,20 @@ function formatEvent(e: typeof eventsTable.$inferSelect, organizer: typeof users
     organizer: formatUser(organizer),
     createdAt: e.createdAt,
   };
+}
+
+async function geocodeAndCacheEvent(e: typeof eventsTable.$inferSelect): Promise<typeof eventsTable.$inferSelect> {
+  if (e.lat != null && e.lng != null) return e;
+  const query = e.city || e.location;
+  if (!query) return e;
+  const coords = await geocodeCity(query);
+  if (!coords) return e;
+  try {
+    await db.update(eventsTable)
+      .set({ lat: coords.lat, lng: coords.lng })
+      .where(eq(eventsTable.id, e.id));
+  } catch {}
+  return { ...e, lat: coords.lat, lng: coords.lng };
 }
 
 // GET /api/events/cities — distinct cities with event counts (for filter dropdown)
@@ -76,17 +93,20 @@ router.get("/events", async (req, res) => {
       meUser = await db.query.usersTable.findFirst({ where: eq(usersTable.clerkId, clerkId) }) || undefined;
     }
 
-    return res.json(await Promise.all(events.map(async r => {
-      const rsvpCount = await getRsvpCount(r.event.id);
+    const results = await Promise.all(events.map(async r => {
+      const geocoded = await geocodeAndCacheEvent(r.event);
+      const rsvpCount = await getRsvpCount(geocoded.id);
       let hasRsvpd = false;
       if (meUser) {
         const rsvp = await db.query.eventRsvpsTable.findFirst({
-          where: and(eq(eventRsvpsTable.eventId, r.event.id), eq(eventRsvpsTable.userId, meUser.id)),
+          where: and(eq(eventRsvpsTable.eventId, geocoded.id), eq(eventRsvpsTable.userId, meUser.id)),
         });
         hasRsvpd = !!rsvp;
       }
-      return formatEvent(r.event, r.organizer, rsvpCount, hasRsvpd);
-    })));
+      return formatEvent(geocoded, r.organizer, rsvpCount, hasRsvpd);
+    }));
+
+    return res.json(results);
   } catch (err) {
     req.log.error({ err }, "Error listing events");
     return res.status(500).json({ error: "Internal server error" });
@@ -100,10 +120,20 @@ router.post("/events", requireAuth(), async (req, res) => {
     if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
     const me = await getOrCreateUser(clerkId);
 
-    const { title, description, type, date, location, imageUrl } = req.body;
+    const { title, description, type, date, location, city, imageUrl } = req.body;
+
+    let lat: number | null = null;
+    let lng: number | null = null;
+    const geoQuery = city || location;
+    if (geoQuery) {
+      const coords = await geocodeCity(geoQuery);
+      if (coords) { lat = coords.lat; lng = coords.lng; }
+    }
+
     const [event] = await db.insert(eventsTable).values({
       userId: me.id, title, description, type: type || "other",
-      date: new Date(date), location, imageUrl,
+      date: new Date(date), location, city: city || null,
+      lat: lat ?? undefined, lng: lng ?? undefined, imageUrl,
     }).returning();
 
     return res.status(201).json(formatEvent(event, me));

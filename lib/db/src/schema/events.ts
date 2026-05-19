@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -12,6 +12,8 @@ export const eventsTable = pgTable("events", {
   date: timestamp("date", { withTimezone: true }).notNull(),
   location: text("location").notNull(),
   city: text("city"),
+  lat: real("lat"),
+  lng: real("lng"),
   imageUrl: text("image_url"),
   source: text("source"),
   sourceUrl: text("source_url").unique(),

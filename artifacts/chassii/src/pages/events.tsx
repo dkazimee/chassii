@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useRsvpEvent } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Users, ExternalLink, Search, Bot, RefreshCw, X } from "lucide-react";
+import { Calendar, MapPin, Users, ExternalLink, Search, Bot, RefreshCw, X, Map, List } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { SignedIn } from "@/components/auth/ConditionalAuth";
+
+const EventsMap = lazy(() => import("@/components/EventsMap"));
 
 type ScrapedEvent = {
   id: number;
@@ -19,6 +21,8 @@ type ScrapedEvent = {
   date: string;
   location: string;
   city: string | null;
+  lat: number | null;
+  lng: number | null;
   imageUrl: string | null;
   source: string | null;
   sourceUrl: string | null;
@@ -50,6 +54,7 @@ export default function EventsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [scrapeCity, setScrapeCity] = useState("");
   const [isScraping, setIsScraping] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const rsvpEvent = useRsvpEvent();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -142,6 +147,8 @@ export default function EventsPage() {
   }
 
   const effectiveCity = debouncedCity || debouncedSearch;
+  const mappableEvents = events?.filter(e => e.lat != null && e.lng != null) ?? [];
+  const hasMappable = mappableEvents.length > 0;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -197,6 +204,27 @@ export default function EventsPage() {
             </button>
           )}
         </div>
+        {/* View toggle */}
+        <div className="flex rounded-xl border border-gray-200 overflow-hidden shrink-0">
+          <button
+            onClick={() => setViewMode("list")}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${
+              viewMode === "list" ? "bg-gray-900 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+            aria-label="List view"
+          >
+            <List className="h-4 w-4" /> List
+          </button>
+          <button
+            onClick={() => setViewMode("map")}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${
+              viewMode === "map" ? "bg-gray-900 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+            aria-label="Map view"
+          >
+            <Map className="h-4 w-4" /> Map
+          </button>
+        </div>
       </div>
 
       {/* Admin scrape panel */}
@@ -226,82 +254,121 @@ export default function EventsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {isLoading ? (
-          [1,2,3,4].map(i => <Skeleton key={i} className="h-64 w-full rounded-3xl" />)
-        ) : events && events.length > 0 ? (
-          events.map(event => (
-            <Card key={event.id} className="rounded-3xl overflow-hidden border-gray-100 shadow-sm flex flex-col">
-              <div className="h-48 bg-gray-900 relative">
-                {event.imageUrl ? (
-                  <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover opacity-80" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                    <Calendar className="h-12 w-12 text-gray-600" />
-                  </div>
-                )}
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-sm font-bold text-gray-900">
-                  {format(new Date(event.date), 'MMM d, h:mm a')}
-                </div>
-                {event.source && (
-                  <div className="absolute top-4 left-4 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
-                    <Bot className="h-3 w-3" />
-                    <SourceBadge source={event.source} />
-                  </div>
-                )}
-              </div>
-              <CardContent className="p-6 flex-1 flex flex-col">
-                <div className="flex items-center gap-2 mb-3 flex-wrap">
-                  <Badge variant="outline">{event.type.replace('_', ' ')}</Badge>
-                  {event.city && <Badge variant="secondary">{event.city}</Badge>}
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h3>
-                <div className="flex items-center gap-2 text-gray-500 mb-4 text-sm">
-                  <MapPin className="h-4 w-4 flex-shrink-0" /> {event.location}
-                </div>
-                {event.description && <p className="text-gray-600 line-clamp-2 mb-6 text-sm">{event.description}</p>}
-
-                <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-100">
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-                    <Users className="h-4 w-4" /> {event.rsvpCount || 0} Attending
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {event.sourceUrl && (
-                      <a
-                        href={event.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-gray-500 hover:text-gray-900 inline-flex items-center gap-1 text-sm"
-                      >
-                        Source <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                    <SignedIn>
-                      <Button
-                        variant={event.hasRsvpd ? "outline" : "default"}
-                        onClick={() => handleRsvp(event.id)}
-                        disabled={rsvpEvent.isPending}
-                      >
-                        {event.hasRsvpd ? "Going" : "RSVP"}
-                      </Button>
-                    </SignedIn>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <div className="col-span-2 text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
-            <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-gray-900">No events found</h3>
-            <p className="mt-2 text-gray-500">
-              {effectiveCity
-                ? `No upcoming events match "${effectiveCity}". Try clearing the filter.`
-                : "Check back later, create your own, or ask an admin to refresh from the web."}
+      {/* Map view */}
+      {viewMode === "map" && (
+        <div>
+          {isLoading ? (
+            <Skeleton className="h-96 w-full rounded-2xl" />
+          ) : hasMappable ? (
+            <Suspense fallback={<Skeleton className="h-96 w-full rounded-2xl" />}>
+              <EventsMap events={mappableEvents as any} />
+            </Suspense>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 bg-white rounded-2xl border border-dashed border-gray-300 text-center px-6">
+              <Map className="h-10 w-10 text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium text-gray-800">No mappable events</h3>
+              <p className="text-gray-500 text-sm mt-1">
+                {effectiveCity
+                  ? `No events with location data match "${effectiveCity}".`
+                  : "Events without a recognizable city can't be placed on the map. They still appear in the list."}
+              </p>
+              <button
+                onClick={() => setViewMode("list")}
+                className="mt-3 text-sm text-blue-600 hover:underline"
+              >
+                Switch to list view
+              </button>
+            </div>
+          )}
+          {/* Show count of events not on map */}
+          {events && events.length > 0 && events.length - mappableEvents.length > 0 && (
+            <p className="text-xs text-gray-400 mt-2 text-center">
+              {events.length - mappableEvents.length} event{events.length - mappableEvents.length !== 1 ? "s" : ""} without location data not shown on map —{" "}
+              <button onClick={() => setViewMode("list")} className="underline hover:text-gray-600">view in list</button>
             </p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+
+      {/* List view */}
+      {viewMode === "list" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {isLoading ? (
+            [1,2,3,4].map(i => <Skeleton key={i} className="h-64 w-full rounded-3xl" />)
+          ) : events && events.length > 0 ? (
+            events.map(event => (
+              <Card key={event.id} className="rounded-3xl overflow-hidden border-gray-100 shadow-sm flex flex-col">
+                <div className="h-48 bg-gray-900 relative">
+                  {event.imageUrl ? (
+                    <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover opacity-80" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                      <Calendar className="h-12 w-12 text-gray-600" />
+                    </div>
+                  )}
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-sm font-bold text-gray-900">
+                    {format(new Date(event.date), 'MMM d, h:mm a')}
+                  </div>
+                  {event.source && (
+                    <div className="absolute top-4 left-4 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+                      <Bot className="h-3 w-3" />
+                      <SourceBadge source={event.source} />
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-6 flex-1 flex flex-col">
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <Badge variant="outline">{event.type.replace('_', ' ')}</Badge>
+                    {event.city && <Badge variant="secondary">{event.city}</Badge>}
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h3>
+                  <div className="flex items-center gap-2 text-gray-500 mb-4 text-sm">
+                    <MapPin className="h-4 w-4 flex-shrink-0" /> {event.location}
+                  </div>
+                  {event.description && <p className="text-gray-600 line-clamp-2 mb-6 text-sm">{event.description}</p>}
+
+                  <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                      <Users className="h-4 w-4" /> {event.rsvpCount || 0} Attending
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {event.sourceUrl && (
+                        <a
+                          href={event.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-500 hover:text-gray-900 inline-flex items-center gap-1 text-sm"
+                        >
+                          Source <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                      <SignedIn>
+                        <Button
+                          variant={event.hasRsvpd ? "outline" : "default"}
+                          onClick={() => handleRsvp(event.id)}
+                          disabled={rsvpEvent.isPending}
+                        >
+                          {event.hasRsvpd ? "Going" : "RSVP"}
+                        </Button>
+                      </SignedIn>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="col-span-2 text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
+              <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-gray-900">No events found</h3>
+              <p className="mt-2 text-gray-500">
+                {effectiveCity
+                  ? `No upcoming events match "${effectiveCity}". Try clearing the filter.`
+                  : "Check back later, create your own, or ask an admin to refresh from the web."}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
