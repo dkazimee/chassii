@@ -15,7 +15,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-end gap-3">
           <Button
             variant="ghost"
-            className="text-white hover:bg-white/10 hover:text-white rounded-full font-semibold"
+            className="text-gray-900 hover:bg-gray-100 rounded-full font-semibold"
             onClick={() => setLocation("/sign-in")}
             data-testid="button-landing-sign-in"
           >
@@ -32,7 +32,7 @@ export default function LandingPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-b from-gray-950 via-gray-900 to-background">
+      <div className="relative bg-white">
         <div className="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto min-h-[90vh] flex flex-col items-center justify-center pt-24 pb-16 text-center">
           <img
             src="/chassii-logo-transparent.png"
@@ -40,25 +40,25 @@ export default function LandingPage() {
             className="w-[60%] max-w-xl drop-shadow-2xl mb-6 sm:mb-8"
             data-testid="img-hero-logo"
           />
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white max-w-3xl drop-shadow-md">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 max-w-3xl">
             Your garage deserves more than a forum thread.
           </h1>
-          <p className="mt-6 text-xl text-gray-200 max-w-2xl drop-shadow">
+          <p className="mt-6 text-xl text-gray-600 max-w-2xl">
             CHASSII is a modern community for car enthusiasts to showcase builds, document ownership, ask questions, and connect with drivers locally or nationwide.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="text-lg px-8 py-6 rounded-full font-bold" onClick={() => setLocation("/sign-up")}>
               Create Your Garage
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8 py-6 rounded-full font-bold bg-white/10 text-white border-white/20 hover:bg-white/20" onClick={() => setLocation("/explore")}>
+            <Button size="lg" variant="outline" className="text-lg px-8 py-6 rounded-full font-bold" onClick={() => setLocation("/explore")}>
               Explore Builds <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
-          <p className="mt-6 text-gray-300 text-sm">
+          <p className="mt-6 text-gray-600 text-sm">
             Already have an account?{" "}
             <button
               onClick={() => setLocation("/sign-in")}
-              className="text-white font-semibold underline underline-offset-4 hover:text-primary"
+              className="text-gray-900 font-semibold underline underline-offset-4 hover:text-primary"
               data-testid="link-landing-hero-sign-in"
             >
               Sign in
