@@ -32,12 +32,23 @@ export default function LandingPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="relative bg-white">
+      <div className="relative bg-white overflow-hidden">
+        {/* Car backdrop */}
+        <div className="absolute inset-0 pointer-events-none">
+          <img
+            src="/hero.png"
+            alt=""
+            aria-hidden="true"
+            className="w-full h-full object-cover opacity-30"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/40 to-white" />
+        </div>
+
         <div className="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto min-h-[90vh] flex flex-col items-center justify-center pt-24 pb-16 text-center">
           <img
             src="/chassii-logo-transparent.png"
             alt="CHASSII"
-            className="w-[60%] max-w-xl drop-shadow-2xl mb-6 sm:mb-8"
+            className="w-[60%] max-w-xl drop-shadow-2xl mb-6 sm:mb-8 relative"
             data-testid="img-hero-logo"
           />
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 max-w-3xl">
