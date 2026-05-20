@@ -449,6 +449,9 @@ export default function EventsPage() {
                   <div className="flex items-center gap-2 mb-3 flex-wrap">
                     <Badge variant="outline">{event.type.replace('_', ' ')}</Badge>
                     {event.city && <Badge variant="secondary">{event.city}</Badge>}
+                    {event.lat != null && event.lng != null && (
+                      <WeatherBadge lat={event.lat} lng={event.lng} date={event.date} />
+                    )}
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h3>
                   <div className="flex items-center gap-2 text-gray-500 mb-4 text-sm">
