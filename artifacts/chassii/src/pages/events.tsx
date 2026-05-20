@@ -47,11 +47,16 @@ export default function EventsPage() {
   const [scrapeCity, setScrapeCity] = useState("");
   const [isScraping, setIsScraping] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  // { lat, lng } of user's saved city (auto-set on mount)
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  // { lat, lng } derived from the manual city filter input
+  const [filterCoords, setFilterCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [savedCity, setSavedCity] = useState<string | null>(null);
   const rsvpEvent = useRsvpEvent();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { isSignedIn } = useAuth();
-  const googleRefreshFired = useRef(false);
+  const initFired = useRef(false);
 
   const { data: adminInfo } = useQuery({
     queryKey: ["admin", "me"],
@@ -73,10 +78,22 @@ export default function EventsPage() {
     return () => clearTimeout(t);
   }, [cityFilter]);
 
-  // Silently trigger a Google Events scrape on mount using the user's saved city
+  // When debouncedCity changes, geocode it to get coords for radius filtering
   useEffect(() => {
-    if (!isSignedIn || googleRefreshFired.current) return;
-    googleRefreshFired.current = true;
+    if (!debouncedCity) { setFilterCoords(null); return; }
+    (async () => {
+      try {
+        const r = await fetch(`/api/geocode?q=${encodeURIComponent(debouncedCity)}`);
+        if (r.ok) setFilterCoords(await r.json());
+        else setFilterCoords(null);
+      } catch { setFilterCoords(null); }
+    })();
+  }, [debouncedCity]);
+
+  // On mount: load saved city, geocode it, trigger Google scrape
+  useEffect(() => {
+    if (!isSignedIn || initFired.current) return;
+    initFired.current = true;
 
     (async () => {
       try {
@@ -85,27 +102,42 @@ export default function EventsPage() {
         const pref = await prefRes.json() as { city?: string; enabled?: boolean } | null;
         const city = pref?.city;
         if (!city) return;
+        setSavedCity(city);
 
+        // Geocode the saved city for radius filtering
+        const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(city)}`);
+        if (geoRes.ok) setUserCoords(await geoRes.json());
+
+        // Silently trigger Google Events scrape for this city
         await fetch("/api/events/refresh", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ city }),
         });
-        // Refresh events list after a short delay to pick up any new results
-        setTimeout(() => queryClient.invalidateQueries({ queryKey: ["events"] }), 8000);
+        // Refresh list after scrape has had time to complete
+        setTimeout(() => queryClient.invalidateQueries({ queryKey: ["events"] }), 10000);
       } catch {
-        // Silent — don't surface errors to user for background scrape
+        // Silent — don't show errors for background work
       }
     })();
   }, [isSignedIn, queryClient]);
 
+  // Active coords: manual filter takes priority, then saved city
+  const activeCoords = filterCoords ?? userCoords;
+
   const { data: allEvents, isLoading } = useQuery({
-    queryKey: ["events", { city: debouncedCity }],
+    queryKey: ["events", { nearLat: activeCoords?.lat, nearLng: activeCoords?.lng, city: debouncedCity }],
     queryFn: async () => {
       const url = new URL("/api/events", window.location.origin);
-      if (debouncedCity) url.searchParams.set("city", debouncedCity);
-      url.searchParams.set("limit", "60");
+      if (activeCoords) {
+        url.searchParams.set("nearLat", String(activeCoords.lat));
+        url.searchParams.set("nearLng", String(activeCoords.lng));
+        url.searchParams.set("radiusMiles", "100");
+      } else if (debouncedCity) {
+        url.searchParams.set("city", debouncedCity);
+      }
+      url.searchParams.set("limit", "80");
       const r = await fetch(url.toString(), { credentials: "include" });
       if (!r.ok) throw new Error("Failed to load events");
       return (await r.json()) as ScrapedEvent[];
@@ -177,7 +209,12 @@ export default function EventsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Events & Meets</h1>
-          <p className="text-gray-500 mt-2">Local cars and coffee, track days, cruises — auto-discovered from Google, Reddit, and Eventbrite within 100 miles of your saved city.</p>
+          <p className="text-gray-500 mt-2">
+            {activeCoords
+              ? <>Showing events within 100 miles of <span className="font-semibold text-gray-700">{debouncedCity || savedCity}</span></>
+              : "Auto-discovered car events from Google, Reddit, and Eventbrite — set your city to filter by location."
+            }
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <SignedIn>
@@ -382,10 +419,12 @@ export default function EventsPage() {
             <div className="col-span-2 text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
               <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-medium text-gray-900">No events found</h3>
-              <p className="mt-2 text-gray-500">
-                {effectiveCity
-                  ? `No upcoming events match "${effectiveCity}". Try clearing the filter.`
-                  : "Check back later, create your own, or ask an admin to refresh from the web."}
+              <p className="mt-2 text-gray-500 max-w-sm mx-auto">
+                {activeCoords
+                  ? `No upcoming car events within 100 miles of ${debouncedCity || savedCity}. Try a different city or clear the filter.`
+                  : isSignedIn
+                    ? "Set your city in your notification preferences to see local events automatically."
+                    : "Sign in and set your city to see events near you."}
               </p>
             </div>
           )}

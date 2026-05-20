@@ -73,6 +73,41 @@ function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number):
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+async function fetchOgImage(url: string): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+      signal: AbortSignal.timeout(7000),
+      redirect: "follow",
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    // Try og:image first, then twitter:image, then first large <img src>
+    const ogMatch =
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
+      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
+    const imgUrl = ogMatch?.[1]?.trim() ?? null;
+    if (!imgUrl) return null;
+    // Make absolute if relative
+    if (imgUrl.startsWith("//")) return `https:${imgUrl}`;
+    if (imgUrl.startsWith("/")) {
+      try {
+        const base = new URL(url);
+        return `${base.origin}${imgUrl}`;
+      } catch { return null; }
+    }
+    return imgUrl;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchGoogleEvents(query: string, location: string): Promise<SerpEvent[]> {
   if (!SERPAPI_KEY) return [];
   try {
@@ -223,6 +258,15 @@ export async function scrapeSerpApiEvents(city: string): Promise<SerpScrapeRepor
     else if (text.includes("cruise") || text.includes("rally")) type = "cruise";
     else if (text.includes("track") || text.includes("race") || text.includes("lap")) type = "track_day";
 
+    // Try to get a high-quality OG image from the event page; fall back to thumbnail
+    let imageUrl: string | undefined = undefined;
+    if (sourceUrl) {
+      const ogImg = await fetchOgImage(sourceUrl);
+      imageUrl = ogImg ?? ev.thumbnail ?? undefined;
+    } else {
+      imageUrl = ev.thumbnail ?? undefined;
+    }
+
     try {
       const inserted = await db.insert(eventsTable).values({
         userId: bot.id,
@@ -234,7 +278,7 @@ export async function scrapeSerpApiEvents(city: string): Promise<SerpScrapeRepor
         city: eventCity.slice(0, 100),
         lat: lat ?? undefined,
         lng: lng ?? undefined,
-        imageUrl: ev.thumbnail ?? undefined,
+        imageUrl,
         source: "google",
         sourceUrl: sourceUrl ?? undefined,
       }).onConflictDoNothing({ target: eventsTable.sourceUrl }).returning({ id: eventsTable.id });

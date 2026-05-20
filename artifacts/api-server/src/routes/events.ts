@@ -68,16 +68,40 @@ router.get("/events/cities", async (req, res) => {
   }
 });
 
+// GET /api/geocode?q=city — resolve city name to lat/lng
+router.get("/geocode", async (req, res) => {
+  const { q } = req.query as Record<string, string>;
+  if (!q?.trim()) return res.status(400).json({ error: "q is required" });
+  const coords = await geocodeCity(q.trim());
+  if (!coords) return res.status(404).json({ error: "Location not found" });
+  return res.json(coords);
+});
+
 // GET /api/events
 router.get("/events", async (req, res) => {
   try {
-    const { city, type, limit = "30", includePast } = req.query as Record<string, string>;
+    const { city, type, limit = "60", includePast, nearLat, nearLng, radiusMiles = "100" } = req.query as Record<string, string>;
     const { userId: clerkId } = getAuth(req);
 
     const filters = [] as any[];
-    if (city && city.trim()) {
+
+    // Radius filter (Haversine SQL) — takes priority over city text filter
+    const lat = parseFloat(nearLat);
+    const lng = parseFloat(nearLng);
+    const radius = parseFloat(radiusMiles);
+    if (!isNaN(lat) && !isNaN(lng) && !isNaN(radius)) {
+      filters.push(sql`
+        ${eventsTable.lat} IS NOT NULL AND ${eventsTable.lng} IS NOT NULL AND
+        2 * 3959 * asin(sqrt(
+          power(sin((radians(${eventsTable.lat}) - radians(${lat})) / 2), 2) +
+          cos(radians(${lat})) * cos(radians(${eventsTable.lat})) *
+          power(sin((radians(${eventsTable.lng}) - radians(${lng})) / 2), 2)
+        )) <= ${radius}
+      `);
+    } else if (city && city.trim()) {
       filters.push(ilike(eventsTable.city, `%${city.trim()}%`));
     }
+
     if (type && type.trim()) {
       filters.push(eq(eventsTable.type, type.trim()));
     }
