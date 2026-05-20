@@ -2,10 +2,16 @@ import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { usersTable, postsTable, commentsTable, likesTable, savedPostsTable } from "@workspace/db";
-import { eq, and, sql, desc, ilike, or } from "drizzle-orm";
+import { eq, and, sql, desc, ilike, or, inArray } from "drizzle-orm";
 import { getOrCreateUser, formatUser } from "./users";
 
 const router = Router();
+
+router.param("postId", (req, res, next, value) => {
+  const id = parseInt(value, 10);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid post id" });
+  next();
+});
 
 async function getPostCounts(postId: number) {
   const [likeResult] = await db.select({ count: sql<number>`count(*)::int` })
@@ -16,6 +22,32 @@ async function getPostCounts(postId: number) {
     likeCount: likeResult?.count ?? 0,
     commentCount: commentResult?.count ?? 0,
   };
+}
+
+async function getBatchPostCounts(postIds: number[]): Promise<Map<number, { likeCount: number; commentCount: number }>> {
+  if (!postIds.length) return new Map();
+  const [likes, comments] = await Promise.all([
+    db.select({ postId: likesTable.postId, count: sql<number>`count(*)::int` })
+      .from(likesTable).where(inArray(likesTable.postId, postIds)).groupBy(likesTable.postId),
+    db.select({ postId: commentsTable.postId, count: sql<number>`count(*)::int` })
+      .from(commentsTable).where(inArray(commentsTable.postId, postIds)).groupBy(commentsTable.postId),
+  ]);
+  const likeMap = new Map(likes.map(r => [r.postId!, r.count]));
+  const commentMap = new Map(comments.map(r => [r.postId, r.count]));
+  return new Map(postIds.map(id => [id, { likeCount: likeMap.get(id) ?? 0, commentCount: commentMap.get(id) ?? 0 }]));
+}
+
+async function getBatchUserPostStatus(userId: number, postIds: number[]): Promise<Map<number, { isLiked: boolean; isSaved: boolean }>> {
+  if (!postIds.length) return new Map();
+  const [liked, saved] = await Promise.all([
+    db.select({ postId: likesTable.postId }).from(likesTable)
+      .where(and(eq(likesTable.userId, userId), inArray(likesTable.postId, postIds))),
+    db.select({ postId: savedPostsTable.postId }).from(savedPostsTable)
+      .where(and(eq(savedPostsTable.userId, userId), inArray(savedPostsTable.postId, postIds))),
+  ]);
+  const likedSet = new Set(liked.map(r => r.postId!));
+  const savedSet = new Set(saved.map(r => r.postId));
+  return new Map(postIds.map(id => [id, { isLiked: likedSet.has(id), isSaved: savedSet.has(id) }]));
 }
 
 async function getUserPostStatus(userId: number, postId: number) {
@@ -43,7 +75,7 @@ function formatPost(p: typeof postsTable.$inferSelect, author: typeof usersTable
 // GET /api/posts
 router.get("/posts", async (req, res) => {
   try {
-    const { make, model, year, generation, category, tag, location, sort, limit = "20", offset = "0" } = req.query as Record<string, string>;
+    const { q, make, model, year, generation, category, tag, location, sort, limit = "20", offset = "0" } = req.query as Record<string, string>;
     const { userId: clerkId } = getAuth(req);
 
     const conditions = [] as any[];
@@ -57,14 +89,21 @@ router.get("/posts", async (req, res) => {
     if (category && category !== "all") conditions.push(eq(postsTable.category, category));
     if (tag) conditions.push(sql`${postsTable.tags} @> ARRAY[${tag}]::text[]`);
     if (location) conditions.push(ilike(postsTable.location, `%${location}%`));
+    if (q?.trim()) {
+      const term = `%${q.trim()}%`;
+      conditions.push(or(ilike(postsTable.title, term), ilike(postsTable.body, term))!);
+    }
 
-    const orderBy = sort === "newest" ? desc(postsTable.createdAt) : desc(postsTable.createdAt);
+    const likeCount = sql<number>`(select count(*)::int from ${likesTable} where ${likesTable.postId} = ${postsTable.id})`;
+    const orderBy = sort === "popular"
+      ? [desc(likeCount), desc(postsTable.createdAt)]
+      : [desc(postsTable.createdAt)];
 
     const posts = await db.select({ post: postsTable, author: usersTable })
       .from(postsTable)
       .innerJoin(usersTable, eq(usersTable.id, postsTable.userId))
       .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(orderBy)
+      .orderBy(...orderBy)
       .limit(parseInt(limit))
       .offset(parseInt(offset));
 
@@ -73,16 +112,17 @@ router.get("/posts", async (req, res) => {
       meUser = await db.query.usersTable.findFirst({ where: eq(usersTable.clerkId, clerkId) }) || undefined;
     }
 
-    return res.json(await Promise.all(posts.map(async r => {
-      const counts = await getPostCounts(r.post.id);
-      let isLiked = false, isSaved = false;
-      if (meUser) {
-        const status = await getUserPostStatus(meUser.id, r.post.id);
-        isLiked = status.isLiked;
-        isSaved = status.isSaved;
-      }
-      return formatPost(r.post, r.author, counts.likeCount, counts.commentCount, isLiked, isSaved);
-    })));
+    const postIds = posts.map(r => r.post.id);
+    const [countsMap, statusMap] = await Promise.all([
+      getBatchPostCounts(postIds),
+      meUser ? getBatchUserPostStatus(meUser.id, postIds) : Promise.resolve(new Map<number, { isLiked: boolean; isSaved: boolean }>()),
+    ]);
+
+    return res.json(posts.map(r => {
+      const counts = countsMap.get(r.post.id) ?? { likeCount: 0, commentCount: 0 };
+      const status = statusMap.get(r.post.id) ?? { isLiked: false, isSaved: false };
+      return formatPost(r.post, r.author, counts.likeCount, counts.commentCount, status.isLiked, status.isSaved);
+    }));
   } catch (err) {
     req.log.error({ err }, "Error listing posts");
     return res.status(500).json({ error: "Internal server error" });
@@ -97,8 +137,12 @@ router.post("/posts", requireAuth(), async (req, res) => {
     const me = await getOrCreateUser(clerkId);
 
     const { title, body, category, carId, make, model, year, generation, location, tags, imageUrls } = req.body;
+    if (!title || !body) return res.status(400).json({ error: "title and body are required" });
     const [post] = await db.insert(postsTable).values({
-      userId: me.id, title, body, category: category || "general",
+      userId: me.id,
+      title: String(title).trim().slice(0, 300),
+      body: String(body).trim().slice(0, 10000),
+      category: category || "general",
       carId: carId || null, make, model, year, generation, location,
       tags: tags || [], imageUrls: imageUrls || [],
     }).returning();

@@ -140,6 +140,16 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   );
 }
 
+function AdminRoute() {
+  const { isSignedIn } = useAuth();
+  const { data: dbUser, isLoading } = useGetMe({ query: { enabled: !!isSignedIn } });
+
+  if (!isSignedIn) return <Redirect to="/sign-in" />;
+  if (isLoading) return null;
+  if (!dbUser?.isAdmin) return <Redirect to="/feed" />;
+  return <AdminPage />;
+}
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -173,7 +183,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/settings"><Layout><ProtectedRoute component={SettingsPage} /></Layout></Route>
           <Route path="/users/:userId"><Layout><UserProfilePage /></Layout></Route>
           <Route path="/cars/:carId"><Layout><CarDetailPage /></Layout></Route>
-          <Route path="/admin"><Layout><ProtectedRoute component={AdminPage} /></Layout></Route>
+          <Route path="/admin"><Layout><AdminRoute /></Layout></Route>
           <Route path="/notifications"><Layout><ProtectedRoute component={NotificationsPage} /></Layout></Route>
           <Route path="*">
             <div className="min-h-screen flex items-center justify-center">

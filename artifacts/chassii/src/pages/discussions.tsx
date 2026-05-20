@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useListPosts } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,9 +18,16 @@ export default function DiscussionsPage() {
   const [sort, setSort] = useState<'newest' | 'popular'>('popular');
   const [filters, setFilters] = useState<FeedFilterValues>(EMPTY_FILTERS);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const queryParams = useMemo(() => {
     const p: Record<string, any> = { sort, limit: 20 };
+    if (debouncedSearch) p.q = debouncedSearch;
     if (filters.make) p.make = filters.make;
     if (filters.model) p.model = filters.model;
     if (filters.year) {
@@ -31,25 +38,10 @@ export default function DiscussionsPage() {
     if (filters.location) p.location = filters.location;
     if (filters.category && filters.category !== "all") p.category = filters.category;
     return p;
-  }, [sort, filters]);
+  }, [sort, debouncedSearch, filters]);
 
   const { data: posts, isLoading } = useListPosts(queryParams);
-
-  const visiblePosts = useMemo(() => {
-    if (!posts) return [];
-    const q = search.trim().toLowerCase();
-    if (!q) return posts;
-    return posts.filter((p) =>
-      p.title.toLowerCase().includes(q) ||
-      (p.body ?? "").toLowerCase().includes(q) ||
-      (p.tags ?? []).some((t) => t.toLowerCase().includes(q)) ||
-      (p.category ?? "").toLowerCase().includes(q) ||
-      (p.make ?? "").toLowerCase().includes(q) ||
-      (p.model ?? "").toLowerCase().includes(q) ||
-      (p.author?.displayName ?? "").toLowerCase().includes(q) ||
-      (p.author?.username ?? "").toLowerCase().includes(q),
-    );
-  }, [posts, search]);
+  const visiblePosts = posts ?? [];
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">

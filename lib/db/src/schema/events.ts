@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, real, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -29,7 +29,9 @@ export const eventsTable = pgTable("events", {
   source: text("source"),
   sourceUrl: text("source_url").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  index("events_date_city_idx").on(t.date, t.city),
+]);
 
 export const insertEventSchema = createInsertSchema(eventsTable).omit({ id: true, createdAt: true });
 export type InsertEvent = z.infer<typeof insertEventSchema>;
@@ -40,7 +42,9 @@ export const eventRsvpsTable = pgTable("event_rsvps", {
   eventId: integer("event_id").notNull().references(() => eventsTable.id),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  uniqueIndex("event_rsvps_pair_idx").on(t.userId, t.eventId),
+]);
 
 export type EventRsvp = typeof eventRsvpsTable.$inferSelect;
 

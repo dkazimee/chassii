@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, real, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -30,7 +30,9 @@ export const userFollowsTable = pgTable("user_follows", {
   followerId: integer("follower_id").notNull().references(() => usersTable.id),
   followingId: integer("following_id").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  uniqueIndex("user_follows_pair_idx").on(t.followerId, t.followingId),
+]);
 
 export type UserFollow = typeof userFollowsTable.$inferSelect;
 
@@ -39,6 +41,8 @@ export const userBlocksTable = pgTable("user_blocks", {
   blockerId: integer("blocker_id").notNull().references(() => usersTable.id),
   blockedId: integer("blocked_id").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  uniqueIndex("user_blocks_pair_idx").on(t.blockerId, t.blockedId),
+]);
 
 export type UserBlock = typeof userBlocksTable.$inferSelect;

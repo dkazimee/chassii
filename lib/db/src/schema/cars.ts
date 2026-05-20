@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -21,7 +21,10 @@ export const carsTable = pgTable("cars", {
   isPublic: boolean("is_public").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  index("cars_user_id_idx").on(t.userId),
+  index("cars_make_model_idx").on(t.make, t.model),
+]);
 
 export const insertCarSchema = createInsertSchema(carsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCar = z.infer<typeof insertCarSchema>;
@@ -32,7 +35,9 @@ export const carFollowsTable = pgTable("car_follows", {
   userId: integer("user_id").notNull().references(() => usersTable.id),
   carId: integer("car_id").notNull().references(() => carsTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  uniqueIndex("car_follows_pair_idx").on(t.userId, t.carId),
+]);
 
 export type CarFollow = typeof carFollowsTable.$inferSelect;
 
