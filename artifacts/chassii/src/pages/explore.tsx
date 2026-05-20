@@ -139,13 +139,13 @@ export default function ExplorePage() {
           <h2 className="text-2xl font-bold text-gray-900">Trending Cars</h2>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {isCarsLoading ? (
-            [1,2,3,4].map(i => <Skeleton key={i} className="h-72 w-full rounded-2xl" />)
+            [1,2,3,4].map(i => <Skeleton key={i} className="h-56 sm:h-64 w-full rounded-2xl" />)
           ) : cars?.map(car => (
             <Link key={car.id} href={`/cars/${car.id}`}>
               <Card className="overflow-hidden rounded-2xl hover:shadow-xl transition-all cursor-pointer group border-transparent shadow-sm hover:-translate-y-1 duration-300">
-                <div className="h-48 relative bg-gray-100 overflow-hidden">
+                <div className="h-40 sm:h-48 relative bg-gray-100 overflow-hidden">
                   {car.mainImageUrl ? (
                     <img src={car.mainImageUrl} alt={`${car.make} ${car.model}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                   ) : (
