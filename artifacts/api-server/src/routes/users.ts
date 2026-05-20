@@ -8,9 +8,15 @@ import {
   carsTable,
   postsTable,
 } from "@workspace/db";
-import { eq, and, sql, desc, ne, isNotNull } from "drizzle-orm";
+import { eq, and, sql, desc, ne, isNotNull, inArray } from "drizzle-orm";
 
 const router = Router();
+
+router.param("userId", (req, res, next, value) => {
+  const id = parseInt(value, 10);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid user id" });
+  next();
+});
 
 const NOMINATIM_UA = "CHASSII Social Network (https://chassii-social-network.replit.app)";
 
@@ -72,34 +78,29 @@ function formatUser(u: typeof usersTable.$inferSelect, extra?: {
 }
 
 async function getOrCreateUser(clerkId: string): Promise<typeof usersTable.$inferSelect> {
-  const existing = await db.query.usersTable.findFirst({
-    where: eq(usersTable.clerkId, clerkId),
-  });
+  const existing = await db.query.usersTable.findFirst({ where: eq(usersTable.clerkId, clerkId) });
   if (existing) return existing;
-
   const username = `user_${clerkId.slice(-8)}`;
-  const [created] = await db.insert(usersTable).values({
-    clerkId,
-    username,
-    displayName: username,
-  }).returning();
-  return created;
+  const inserted = await db.insert(usersTable).values({ clerkId, username, displayName: username })
+    .onConflictDoNothing({ target: usersTable.clerkId }).returning();
+  if (inserted[0]) return inserted[0];
+  const found = await db.query.usersTable.findFirst({ where: eq(usersTable.clerkId, clerkId) });
+  if (!found) throw new Error("Failed to get or create user");
+  return found;
 }
 
 async function getUserCounts(userId: number) {
-  const [followerResult] = await db.select({ count: sql<number>`count(*)::int` })
-    .from(userFollowsTable).where(eq(userFollowsTable.followingId, userId));
-  const [followingResult] = await db.select({ count: sql<number>`count(*)::int` })
-    .from(userFollowsTable).where(eq(userFollowsTable.followerId, userId));
-  const [carResult] = await db.select({ count: sql<number>`count(*)::int` })
-    .from(carsTable).where(eq(carsTable.userId, userId));
-  const [postResult] = await db.select({ count: sql<number>`count(*)::int` })
-    .from(postsTable).where(eq(postsTable.userId, userId));
+  const [followerResult, followingResult, carResult, postResult] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` }).from(userFollowsTable).where(eq(userFollowsTable.followingId, userId)),
+    db.select({ count: sql<number>`count(*)::int` }).from(userFollowsTable).where(eq(userFollowsTable.followerId, userId)),
+    db.select({ count: sql<number>`count(*)::int` }).from(carsTable).where(eq(carsTable.userId, userId)),
+    db.select({ count: sql<number>`count(*)::int` }).from(postsTable).where(eq(postsTable.userId, userId)),
+  ]);
   return {
-    followerCount: followerResult?.count ?? 0,
-    followingCount: followingResult?.count ?? 0,
-    carCount: carResult?.count ?? 0,
-    postCount: postResult?.count ?? 0,
+    followerCount: followerResult[0]?.count ?? 0,
+    followingCount: followingResult[0]?.count ?? 0,
+    carCount: carResult[0]?.count ?? 0,
+    postCount: postResult[0]?.count ?? 0,
   };
 }
 
@@ -126,7 +127,13 @@ router.patch("/users/me", requireAuth(), async (req, res) => {
     if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
 
     const user = await getOrCreateUser(clerkId);
-    const { displayName, bio, location, avatarUrl, coverUrl, username } = req.body;
+    const rawBody = req.body;
+    const displayName = rawBody.displayName !== undefined ? String(rawBody.displayName).trim().slice(0, 100) : undefined;
+    const bio = rawBody.bio !== undefined ? String(rawBody.bio).trim().slice(0, 500) : undefined;
+    const location = rawBody.location !== undefined ? String(rawBody.location).trim().slice(0, 200) : undefined;
+    const avatarUrl = rawBody.avatarUrl;
+    const coverUrl = rawBody.coverUrl;
+    const username = rawBody.username !== undefined ? String(rawBody.username).trim().slice(0, 30) : undefined;
 
     if (username && username !== user.username) {
       const taken = await db.query.usersTable.findFirst({
@@ -184,10 +191,10 @@ router.get("/users/map", async (req, res) => {
         isNotNull(usersTable.latitude),
         isNotNull(usersTable.longitude),
       ),
-    );
+    ).limit(500);
     const userIds = users.map(u => u.id);
     const cars = userIds.length
-      ? await db.select().from(carsTable).where(eq(carsTable.isPublic, true))
+      ? await db.select().from(carsTable).where(and(eq(carsTable.isPublic, true), inArray(carsTable.userId, userIds)))
       : [];
     const carsByUser = new Map<number, typeof cars>();
     for (const c of cars) {
@@ -309,7 +316,7 @@ router.get("/users/:userId/cars", async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const cars = await db.select().from(carsTable)
-      .where(eq(carsTable.userId, userId))
+      .where(and(eq(carsTable.userId, userId), eq(carsTable.isPublic, true)))
       .orderBy(desc(carsTable.createdAt));
 
     return res.json(cars.map(c => ({

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
+import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
 import { carsTable, carModsTable, usersTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -7,10 +8,19 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
+const aiChatLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many AI requests, please wait a moment." },
+  keyGenerator: (req) => (req as any).auth?.userId ?? req.ip ?? "unknown",
+});
+
 // POST /api/ai/cars/:carId/chat
 // Streams an AI response based on the car's context and the user's messages.
 // Only the car's owner may use the AI mechanic.
-router.post("/ai/cars/:carId/chat", requireAuth(), async (req, res) => {
+router.post("/ai/cars/:carId/chat", requireAuth(), aiChatLimit, async (req, res) => {
   try {
     const carId = Number(req.params.carId);
     const { messages } = req.body as {
@@ -84,7 +94,6 @@ INSTRUCTIONS:
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    res.setHeader("Access-Control-Allow-Origin", "*");
 
     const stream = await openai.chat.completions.create({
       model: "gpt-5.1",

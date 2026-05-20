@@ -13,6 +13,12 @@ import { getOrCreateUser, formatUser } from "./users";
 
 const router = Router();
 
+router.param("carId", (req, res, next, value) => {
+  const id = parseInt(value, 10);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid car id" });
+  next();
+});
+
 async function getCarFollowerCount(carId: number) {
   const [r] = await db.select({ count: sql<number>`count(*)::int` })
     .from(carFollowsTable).where(eq(carFollowsTable.carId, carId));

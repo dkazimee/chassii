@@ -13,6 +13,12 @@ const SERP_COOLDOWN_MS = 60 * 60 * 1000;
 
 const router = Router();
 
+router.param("eventId", (req, res, next, value) => {
+  const id = parseInt(value, 10);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid event id" });
+  next();
+});
+
 async function getRsvpCount(eventId: number) {
   const [r] = await db.select({ count: sql<number>`count(*)::int` })
     .from(eventRsvpsTable).where(eq(eventRsvpsTable.eventId, eventId));
