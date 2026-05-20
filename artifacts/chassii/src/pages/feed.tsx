@@ -1,20 +1,26 @@
 import { useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
-import { useGetFeed } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { Link } from "wouter";
-import { Car, Wrench, Users, TrendingUp, Calendar, MapPin, MessageSquare, Heart } from "lucide-react";
+import { Car, Wrench, Users, TrendingUp, Calendar, MapPin, MessageSquare, Heart, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostActions } from "@/components/PostActions";
 import { FeedFilters, EMPTY_FILTERS, type FeedFilterValues } from "@/components/FeedFilters";
 import { useLightbox } from "@/components/Lightbox";
 
+async function fetchFeed(scope: "all" | "following"): Promise<any[]> {
+  const r = await fetch(`/api/feed?scope=${scope}&limit=40`, { credentials: "include" });
+  if (!r.ok) return [];
+  return r.json();
+}
+
 function matchesFilters(item: any, f: FeedFilterValues): boolean {
+  if (item.type === "rsvp") return true;
   const make = (item.post?.make ?? item.car?.make ?? "").toString().toLowerCase();
   const model = (item.post?.model ?? item.car?.model ?? "").toString().toLowerCase();
   const year = (item.post?.year ?? item.car?.year ?? "").toString();
@@ -33,7 +39,6 @@ function matchesFilters(item: any, f: FeedFilterValues): boolean {
 
 export default function FeedPage() {
   const { isSignedIn } = useAuth();
-  const { data: feedData, isLoading } = useGetFeed();
   const { data: adminInfo } = useQuery({
     queryKey: ["admin-me"],
     enabled: !!isSignedIn,
@@ -45,21 +50,90 @@ export default function FeedPage() {
   });
   const isAdmin = !!adminInfo?.isAdmin;
   const [filters, setFilters] = useState<FeedFilterValues>(EMPTY_FILTERS);
+  const [tab, setTab] = useState<"all" | "following">("all");
   const lightbox = useLightbox();
+
+  const { data: feedData, isLoading } = useQuery({
+    queryKey: ["feed", tab],
+    queryFn: () => fetchFeed(tab),
+  });
 
   const filteredFeed = (feedData ?? []).filter((item) => matchesFilters(item, filters));
   const hasActiveFilters =
     !!filters.make || !!filters.model || !!filters.year || !!filters.generation || !!filters.location || (!!filters.category && filters.category !== "all");
 
   const renderFeedItem = (item: any) => {
-    if (item.type === 'post' && item.post) {
+    if (item.type === "rsvp" && item.event) {
       return (
-        <Card key={item.id} className="mb-4 hover:border-gray-300 transition-colors">
+        <Card key={`rsvp-${item.id}`} className="mb-4 hover:border-gray-300 transition-colors">
           <CardContent className="pt-6">
             <div className="flex items-start gap-4">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={item.actor?.avatarUrl || ''} />
-                <AvatarFallback>{item.actor?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                <AvatarImage src={item.actor?.avatarUrl || ""} />
+                <AvatarFallback>{item.actor?.displayName?.charAt(0) || "U"}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <Link href={`/users/${item.actor?.id}`} className="font-semibold text-gray-900 hover:underline">
+                    {item.actor?.displayName}
+                  </Link>
+                  <span className="text-gray-500 text-sm">is going to an event</span>
+                  <span className="text-gray-400 text-sm ml-auto whitespace-nowrap">
+                    {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 flex gap-4 items-start">
+                  {item.event.imageUrl && (
+                    <img
+                      src={item.event.imageUrl}
+                      alt={item.event.title}
+                      className="h-16 w-16 rounded-lg object-cover flex-shrink-0"
+                    />
+                  )}
+                  {!item.event.imageUrl && (
+                    <div className="h-16 w-16 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                      <Calendar className="h-7 w-7 text-primary" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-gray-900 line-clamp-2 mb-1">{item.event.title}</div>
+                    <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(item.event.date), "MMM d, yyyy")}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {item.event.city || item.event.location}
+                      </span>
+                    </div>
+                    {item.event.sourceUrl && (
+                      <a
+                        href={item.event.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-2 text-xs text-primary hover:underline font-medium"
+                      >
+                        View event <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (item.type === "post" && item.post) {
+      return (
+        <Card key={`post-${item.id}`} className="mb-4 hover:border-gray-300 transition-colors">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={item.actor?.avatarUrl || ""} />
+                <AvatarFallback>{item.actor?.displayName?.charAt(0) || "U"}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -97,10 +171,10 @@ export default function FeedPage() {
         </Card>
       );
     }
-    
-    if (item.type === 'new_car' && item.car) {
+
+    if (item.type === "new_car" && item.car) {
       return (
-        <Card key={item.id} className="mb-4 hover:border-gray-300 transition-colors overflow-hidden">
+        <Card key={`car-${item.id}`} className="mb-4 hover:border-gray-300 transition-colors overflow-hidden">
           <CardContent className="p-0">
             {item.car.mainImageUrl && (
               <Link href={`/cars/${item.car.id}`}>
@@ -112,8 +186,8 @@ export default function FeedPage() {
             <div className="p-6">
               <div className="flex items-start gap-4">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={item.actor?.avatarUrl || ''} />
-                  <AvatarFallback>{item.actor?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                  <AvatarImage src={item.actor?.avatarUrl || ""} />
+                  <AvatarFallback>{item.actor?.displayName?.charAt(0) || "U"}</AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -138,125 +212,145 @@ export default function FeedPage() {
       );
     }
 
-    if (item.type === 'timeline_entry' && item.timelineEntry) {
-        return (
-          <Card key={item.id} className="mb-4">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                  <Wrench className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Link href={`/users/${item.actor?.id}`} className="font-semibold text-gray-900 hover:underline">
-                      {item.actor?.displayName}
-                    </Link>
-                    <span className="text-gray-500 text-sm">updated their build</span>
-                    <span className="text-gray-400 text-sm ml-auto">
-                      {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-                    </span>
-                  </div>
-                  <Link href={`/cars/${item.timelineEntry.carId}`}>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 cursor-pointer hover:underline">
-                      {item.timelineEntry.title}
-                    </h3>
-                  </Link>
-                  {item.timelineEntry.body && (
-                    <p className="text-gray-600 mb-4">{item.timelineEntry.body}</p>
-                  )}
-                  {item.timelineEntry.imageUrls && item.timelineEntry.imageUrls.length > 0 && (
-                     <div className="grid grid-cols-2 gap-2 mt-2">
-                        {item.timelineEntry.imageUrls.map((url: string, i: number) => (
-                           <button
-                             key={i}
-                             type="button"
-                             onClick={() => lightbox.open(item.timelineEntry.imageUrls, i, item.timelineEntry.title)}
-                             className="block w-full focus:outline-none focus:ring-2 focus:ring-primary rounded-lg overflow-hidden"
-                           >
-                             <img src={url} alt="Timeline update" className="rounded-lg w-full h-32 object-cover cursor-zoom-in hover:opacity-95 transition-opacity" />
-                           </button>
-                        ))}
-                     </div>
-                  )}
-                </div>
+    if (item.type === "timeline_entry" && item.timelineEntry) {
+      return (
+        <Card key={`tl-${item.id}`} className="mb-4">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <Wrench className="h-5 w-5 text-primary" />
               </div>
-            </CardContent>
-          </Card>
-        );
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Link href={`/users/${item.actor?.id}`} className="font-semibold text-gray-900 hover:underline">
+                    {item.actor?.displayName}
+                  </Link>
+                  <span className="text-gray-500 text-sm">updated their build</span>
+                  <span className="text-gray-400 text-sm ml-auto">
+                    {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                  </span>
+                </div>
+                <Link href={`/cars/${item.timelineEntry.carId}`}>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 cursor-pointer hover:underline">
+                    {item.timelineEntry.title}
+                  </h3>
+                </Link>
+                {item.timelineEntry.body && (
+                  <p className="text-gray-600 mb-4">{item.timelineEntry.body}</p>
+                )}
+                {item.timelineEntry.imageUrls && item.timelineEntry.imageUrls.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {item.timelineEntry.imageUrls.map((url: string, i: number) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => lightbox.open(item.timelineEntry.imageUrls, i, item.timelineEntry.title)}
+                        className="block w-full focus:outline-none focus:ring-2 focus:ring-primary rounded-lg overflow-hidden"
+                      >
+                        <img src={url} alt="Timeline update" className="rounded-lg w-full h-32 object-cover cursor-zoom-in hover:opacity-95 transition-opacity" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
     }
 
     return null;
   };
 
+  const FeedContent = ({ items, loading }: { items: any[]; loading: boolean }) => {
+    if (loading) {
+      return (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+    if (items.length > 0) return <>{items.map(renderFeedItem)}</>;
+    if (hasActiveFilters) {
+      return (
+        <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+          <Car className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900">No activity matches these filters</h3>
+          <p className="mt-1 text-gray-500">Try clearing a filter or two to see more.</p>
+        </div>
+      );
+    }
+    return (
+      <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+        <Car className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900">
+          {tab === "following" ? "Nothing from people you follow yet" : "Your feed is quiet"}
+        </h3>
+        <p className="mt-1 text-gray-500">
+          {tab === "following"
+            ? "Follow some users to see their posts and RSVPs here."
+            : "Follow users and cars to see updates here."}
+        </p>
+      </div>
+    );
+  };
+
   return (
     <>
-    {lightbox.element}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2">
-        <Tabs defaultValue="following" className="w-full">
-          <TabsList className="mb-6 w-full justify-start border-b rounded-none h-12 bg-transparent p-0">
-            <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2 font-semibold">
-              All Activity
-            </TabsTrigger>
-            <TabsTrigger value="following" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2 font-semibold">
-              Following
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all" className="mt-0">
-            <FeedFilters
-              value={filters}
-              onChange={setFilters}
-              resultCount={filteredFeed.length}
-              totalCount={feedData?.length ?? 0}
-            />
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <Card key={i}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start gap-4">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-4 w-1/4" />
-                          <Skeleton className="h-4 w-3/4" />
-                          <Skeleton className="h-20 w-full" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : filteredFeed.length > 0 ? (
-              filteredFeed.map(renderFeedItem)
-            ) : hasActiveFilters ? (
-              <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                <Car className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900">No activity matches these filters</h3>
-                <p className="mt-1 text-gray-500">Try clearing a filter or two to see more.</p>
-              </div>
-            ) : (
-              <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                <Car className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900">Your feed is quiet</h3>
-                <p className="mt-1 text-gray-500">Follow users and cars to see updates here.</p>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="following" className="mt-0">
-             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                <h3 className="text-lg font-medium text-gray-900">Not enough data</h3>
-                <p className="mt-1 text-gray-500">Find more garages to follow.</p>
-              </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+      {lightbox.element}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "all" | "following")} className="w-full">
+            <TabsList className="mb-6 w-full justify-start border-b rounded-none h-12 bg-transparent p-0">
+              <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2 font-semibold">
+                All Activity
+              </TabsTrigger>
+              <TabsTrigger value="following" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2 font-semibold">
+                Following
+              </TabsTrigger>
+            </TabsList>
 
-      <aside className="hidden lg:block">
-        <HomeSidebar />
-      </aside>
-    </div>
+            <TabsContent value="all" className="mt-0">
+              <FeedFilters
+                value={filters}
+                onChange={setFilters}
+                resultCount={filteredFeed.length}
+                totalCount={feedData?.length ?? 0}
+              />
+              <FeedContent items={filteredFeed} loading={isLoading} />
+            </TabsContent>
+
+            <TabsContent value="following" className="mt-0">
+              {!isSignedIn ? (
+                <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                  <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">Sign in to see your feed</h3>
+                  <p className="mt-1 text-gray-500">Follow people to see their activity here.</p>
+                </div>
+              ) : (
+                <FeedContent items={filteredFeed} loading={isLoading} />
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <aside className="hidden lg:block">
+          <HomeSidebar />
+        </aside>
+      </div>
     </>
   );
 }
@@ -298,7 +392,6 @@ function HomeSidebar() {
 
   return (
     <div className="space-y-6 sticky top-6">
-      {/* My Garage at a Glance */}
       <Card>
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Car className="h-4 w-4" /> My Garage</h3>
@@ -331,7 +424,6 @@ function HomeSidebar() {
         </CardContent>
       </Card>
 
-      {/* Who to Follow */}
       {data.suggestions.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -363,7 +455,6 @@ function HomeSidebar() {
         </Card>
       )}
 
-      {/* Trending For Your Garage */}
       {data.trending.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -386,7 +477,6 @@ function HomeSidebar() {
         </Card>
       )}
 
-      {/* Upcoming Events Near You */}
       {data.events.length > 0 && (
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
@@ -396,7 +486,7 @@ function HomeSidebar() {
           <CardContent>
             <div className="space-y-3">
               {data.events.map((e) => (
-                <Link key={e.id} href={`/events`} className="block hover:bg-gray-50 -mx-2 px-2 py-1.5 rounded-md transition-colors">
+                <Link key={e.id} href="/events" className="block hover:bg-gray-50 -mx-2 px-2 py-1.5 rounded-md transition-colors">
                   <div className="text-sm font-medium text-gray-900 line-clamp-2">{e.title}</div>
                   <div className="text-xs text-gray-500 mt-1 flex items-center gap-3">
                     <span>{new Date(e.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>

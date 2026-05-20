@@ -43,3 +43,13 @@ export const eventRsvpsTable = pgTable("event_rsvps", {
 });
 
 export type EventRsvp = typeof eventRsvpsTable.$inferSelect;
+
+export const activityTable = pgTable("activity", {
+  id: serial("id").primaryKey(),
+  actorId: integer("actor_id").notNull().references(() => usersTable.id),
+  type: text("type").notNull(),
+  eventId: integer("event_id").references(() => eventsTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Activity = typeof activityTable.$inferSelect;

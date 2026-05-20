@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { usersTable, eventsTable, eventRsvpsTable, eventAlertPreferencesTable } from "@workspace/db";
+import { usersTable, eventsTable, eventRsvpsTable, eventAlertPreferencesTable, activityTable } from "@workspace/db";
 import { eq, and, sql, asc, ilike, isNotNull } from "drizzle-orm";
 import { getOrCreateUser, formatUser } from "./users";
 import { geocodeCity } from "../geocode";
@@ -335,7 +335,10 @@ router.post("/events/:eventId/rsvp", requireAuth(), async (req, res) => {
       where: and(eq(eventRsvpsTable.eventId, eventId), eq(eventRsvpsTable.userId, me.id)),
     });
     if (!existing) {
-      await db.insert(eventRsvpsTable).values({ eventId, userId: me.id });
+      await db.transaction(async (tx) => {
+        await tx.insert(eventRsvpsTable).values({ eventId, userId: me.id });
+        await tx.insert(activityTable).values({ actorId: me.id, type: "rsvp", eventId });
+      });
     }
     return res.json({ rsvpd: true });
   } catch (err) {
