@@ -137,6 +137,9 @@ export default function ExplorePage() {
       <section>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Trending Cars</h2>
+          <Link href="/search?tab=cars">
+            <Button variant="ghost" className="text-primary font-medium hover:text-red-700">View All</Button>
+          </Link>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">

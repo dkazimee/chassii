@@ -186,25 +186,25 @@ export default function NavBar() {
           <div className="pt-2 pb-3 space-y-1">
             {user && (
               <>
-                <Link href="/feed" className={mobileNavLink("/feed")}>
+                <Link href="/feed" className={mobileNavLink("/feed")} onClick={() => setIsMobileMenuOpen(false)}>
                   Home
                 </Link>
-                <Link href="/garage" className={mobileNavLink("/garage")}>
+                <Link href="/garage" className={mobileNavLink("/garage")} onClick={() => setIsMobileMenuOpen(false)}>
                   My Garage
                 </Link>
               </>
             )}
-            <Link href="/explore" className={mobileNavLink("/explore")}>
+            <Link href="/explore" className={mobileNavLink("/explore")} onClick={() => setIsMobileMenuOpen(false)}>
               Explore
             </Link>
-            <Link href="/discussions" className={mobileNavLink("/discussions")}>
+            <Link href="/discussions" className={mobileNavLink("/discussions")} onClick={() => setIsMobileMenuOpen(false)}>
               Discussions
             </Link>
-            <Link href="/events" className={mobileNavLink("/events")}>
+            <Link href="/events" className={mobileNavLink("/events")} onClick={() => setIsMobileMenuOpen(false)}>
               Events
             </Link>
             {isAdmin && (
-              <Link href="/admin" className={`${mobileNavLink("/admin")} flex items-center gap-2`}>
+              <Link href="/admin" className={`${mobileNavLink("/admin")} flex items-center gap-2`} onClick={() => setIsMobileMenuOpen(false)}>
                 <Shield className="h-4 w-4" /> Admin
               </Link>
             )}
