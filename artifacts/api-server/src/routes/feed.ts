@@ -8,7 +8,7 @@ import {
   activityTable,
   userFollowsTable,
 } from "@workspace/db";
-import { eq, desc, inArray, or, sql } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
 import { getOrCreateUser, formatUser } from "./users";
 
 const router = Router();
@@ -78,9 +78,11 @@ router.get("/feed", async (req, res) => {
       .innerJoin(usersTable, eq(usersTable.id, activityTable.actorId))
       .leftJoin(eventsTable, eq(eventsTable.id, activityTable.eventId))
       .where(
-        scope === "following" && scopeIds.length > 0
-          ? inArray(activityTable.actorId, scopeIds)
-          : undefined
+        scope === "following"
+          ? scopeIds.length > 0
+            ? and(eq(activityTable.type, "rsvp"), inArray(activityTable.actorId, scopeIds))
+            : and(eq(activityTable.type, "rsvp"), eq(activityTable.actorId, -1))
+          : eq(activityTable.type, "rsvp")
       )
       .orderBy(desc(activityTable.createdAt))
       .limit(limit + offset);
