@@ -81,9 +81,9 @@ export default function ExplorePage() {
                   {garage.coverUrl && <img src={garage.coverUrl} className="w-full h-full object-cover opacity-60" alt="Cover" />}
                 </div>
                 <CardContent className="p-5 pt-0 flex flex-col flex-1">
-                  {/* Avatar row — sits below the cover, no absolute overlap */}
-                  <div className="flex items-end gap-3 -mt-8 mb-3">
-                    <Avatar className="h-16 w-16 border-4 border-white shadow-sm flex-shrink-0">
+                  {/* Avatar row — avatar overlaps cover, text sits below it */}
+                  <div className="flex items-end gap-3 mb-3">
+                    <Avatar className="h-16 w-16 border-4 border-white shadow-sm flex-shrink-0 -mt-8">
                       <AvatarImage src={garage.avatarUrl || ''} />
                       <AvatarFallback>{garage.displayName.charAt(0)}</AvatarFallback>
                     </Avatar>
