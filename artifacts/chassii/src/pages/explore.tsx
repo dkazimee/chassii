@@ -71,13 +71,13 @@ export default function ExplorePage() {
           <Button variant="ghost" className="text-primary font-medium hover:text-red-700">View All</Button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {isGaragesLoading ? (
-            [1,2,3].map(i => <Skeleton key={i} className="h-64 w-full rounded-3xl" />)
+            [1,2,3].map(i => <Skeleton key={i} className="h-56 md:h-64 w-full rounded-3xl" />)
           ) : garages?.map((garage: any) => (
             <Link key={garage.id} href={`/users/${garage.id}`} className="flex">
-              <Card className="rounded-3xl border-gray-100 hover:shadow-lg transition-shadow cursor-pointer overflow-hidden group flex flex-col w-full min-h-[260px]">
-                <div className="h-20 bg-gray-900 relative flex-shrink-0">
+              <Card className="rounded-3xl border-gray-100 hover:shadow-lg transition-shadow cursor-pointer overflow-hidden group flex flex-col w-full md:min-h-[260px]">
+                <div className="h-16 md:h-20 bg-gray-900 relative flex-shrink-0">
                   {garage.coverUrl && <img src={garage.coverUrl} className="w-full h-full object-cover opacity-60" alt="Cover" />}
                 </div>
                 <CardContent className="p-5 pt-0 flex flex-col flex-1">
