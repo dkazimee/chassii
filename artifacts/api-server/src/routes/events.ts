@@ -5,6 +5,11 @@ import { usersTable, eventsTable, eventRsvpsTable, eventAlertPreferencesTable } 
 import { eq, and, sql, asc, ilike, isNotNull } from "drizzle-orm";
 import { getOrCreateUser, formatUser } from "./users";
 import { geocodeCity } from "../geocode";
+import { scrapeSerpApiEvents } from "../lib/serpApiScraper";
+
+// Simple in-memory rate limit: one Google scrape per city per hour
+const serpScrapeLastRun = new Map<string, number>();
+const SERP_COOLDOWN_MS = 60 * 60 * 1000;
 
 const router = Router();
 
@@ -209,6 +214,39 @@ router.delete("/users/me/alert-preferences", requireAuth(), async (req, res) => 
     return res.json({ deleted: true });
   } catch (err) {
     req.log.error({ err }, "Error deleting alert preferences");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/events/refresh — authenticated users trigger a Google Events scrape for their city
+router.post("/events/refresh", requireAuth(), async (req, res) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { city } = req.body as { city?: string };
+    if (!city || !city.trim()) {
+      return res.status(400).json({ error: "city is required" });
+    }
+
+    const normalizedCity = city.trim().toLowerCase();
+    const lastRun = serpScrapeLastRun.get(normalizedCity) ?? 0;
+    const now = Date.now();
+    if (now - lastRun < SERP_COOLDOWN_MS) {
+      return res.json({ inserted: 0, skipped: true, reason: "recently_scraped" });
+    }
+    serpScrapeLastRun.set(normalizedCity, now);
+
+    // Run in background — don't await so the response returns immediately
+    scrapeSerpApiEvents(city.trim()).then(report => {
+      console.log(`[events/refresh] Google scrape for "${city}" done — ${report.inserted} inserted`);
+    }).catch(err => {
+      console.error(`[events/refresh] Google scrape failed for "${city}"`, err);
+    });
+
+    return res.json({ inserted: 0, started: true });
+  } catch (err) {
+    req.log.error({ err }, "Error triggering events refresh");
     return res.status(500).json({ error: "Internal server error" });
   }
 });

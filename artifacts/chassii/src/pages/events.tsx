@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useRsvpEvent } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { SignedIn } from "@/components/auth/ConditionalAuth";
+import { useAuth } from "@clerk/react";
 
 const EventsMap = lazy(() => import("@/components/EventsMap"));
 
@@ -33,18 +34,9 @@ type ScrapedEvent = {
 
 function SourceBadge({ source }: { source: string | null }) {
   if (!source) return null;
-  const isEventbrite = source === "eventbrite";
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-        isEventbrite
-          ? "bg-orange-100 text-orange-700"
-          : "bg-blue-100 text-blue-700"
-      }`}
-    >
-      {isEventbrite ? "Eventbrite" : "Reddit"}
-    </span>
-  );
+  if (source === "eventbrite") return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">Eventbrite</span>;
+  if (source === "google") return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Google</span>;
+  return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Reddit</span>;
 }
 
 export default function EventsPage() {
@@ -58,6 +50,8 @@ export default function EventsPage() {
   const rsvpEvent = useRsvpEvent();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { isSignedIn } = useAuth();
+  const googleRefreshFired = useRef(false);
 
   const { data: adminInfo } = useQuery({
     queryKey: ["admin", "me"],
@@ -78,6 +72,33 @@ export default function EventsPage() {
     const t = setTimeout(() => setDebouncedCity(cityFilter.trim()), 400);
     return () => clearTimeout(t);
   }, [cityFilter]);
+
+  // Silently trigger a Google Events scrape on mount using the user's saved city
+  useEffect(() => {
+    if (!isSignedIn || googleRefreshFired.current) return;
+    googleRefreshFired.current = true;
+
+    (async () => {
+      try {
+        const prefRes = await fetch("/api/users/me/alert-preferences", { credentials: "include" });
+        if (!prefRes.ok) return;
+        const pref = await prefRes.json() as { city?: string; enabled?: boolean } | null;
+        const city = pref?.city;
+        if (!city) return;
+
+        await fetch("/api/events/refresh", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ city }),
+        });
+        // Refresh events list after a short delay to pick up any new results
+        setTimeout(() => queryClient.invalidateQueries({ queryKey: ["events"] }), 8000);
+      } catch {
+        // Silent — don't surface errors to user for background scrape
+      }
+    })();
+  }, [isSignedIn, queryClient]);
 
   const { data: allEvents, isLoading } = useQuery({
     queryKey: ["events", { city: debouncedCity }],
@@ -134,9 +155,10 @@ export default function EventsPage() {
       const fetched = report?.totalFetched ?? report?.fetched ?? 0;
       const redditInserted = report?.reddit?.inserted ?? 0;
       const ebInserted = report?.eventbrite?.inserted ?? 0;
+      const googleInserted = report?.google?.inserted ?? 0;
       toast({
         title: `Found ${inserted} new event${inserted !== 1 ? "s" : ""}`,
-        description: `Scanned ${fetched} posts — Reddit: ${redditInserted}, Eventbrite: ${ebInserted}`,
+        description: `Reddit: ${redditInserted}, Eventbrite: ${ebInserted}, Google: ${googleInserted} (${fetched} total scanned)`,
       });
       queryClient.invalidateQueries({ queryKey: ["events"] });
     } catch (err) {
@@ -155,7 +177,7 @@ export default function EventsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Events & Meets</h1>
-          <p className="text-gray-500 mt-2">Local cars and coffee, track days, cruises — plus events auto-discovered from Reddit and Eventbrite.</p>
+          <p className="text-gray-500 mt-2">Local cars and coffee, track days, cruises — auto-discovered from Google, Reddit, and Eventbrite within 100 miles of your saved city.</p>
         </div>
         <div className="flex items-center gap-2">
           <SignedIn>
