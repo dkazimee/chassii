@@ -99,27 +99,34 @@ export default function ExplorePage() {
                   </div>
 
                   {/* Mini garage */}
-                  {garage.cars && garage.cars.length > 0 && (
-                    <div className="space-y-1.5 border-t border-gray-100 pt-3 flex-1">
-                      {garage.cars.slice(0, 2).map((car: any) => (
-                        <div key={car.id} className="flex items-center gap-2">
-                          <div className="h-8 w-10 rounded bg-gray-100 overflow-hidden flex-shrink-0">
-                            {car.mainImageUrl ? (
-                              <img src={car.mainImageUrl} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="h-full w-full flex items-center justify-center">
-                                <CarIcon className="h-4 w-4 text-gray-300" />
-                              </div>
-                            )}
+                  <div className="border-t border-gray-100 pt-3 flex-1">
+                    {garage.cars && garage.cars.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {garage.cars.slice(0, 2).map((car: any) => (
+                          <div key={car.id} className="flex items-center gap-2">
+                            <div className="h-8 w-10 rounded bg-gray-100 overflow-hidden flex-shrink-0">
+                              {car.mainImageUrl ? (
+                                <img src={car.mainImageUrl} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center">
+                                  <CarIcon className="h-4 w-4 text-gray-300" />
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-700 truncate">{car.year} {car.make} {car.model}</span>
                           </div>
-                          <span className="text-xs text-gray-700 truncate">{car.year} {car.make} {car.model}</span>
-                        </div>
-                      ))}
-                      {garage.cars.length > 2 && (
-                        <p className="text-xs text-gray-400 pl-12">+{garage.cars.length - 2} more</p>
-                      )}
-                    </div>
-                  )}
+                        ))}
+                        {garage.cars.length > 2 && (
+                          <p className="text-xs text-gray-400 pl-12">+{garage.cars.length - 2} more</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <CarIcon className="h-4 w-4 flex-shrink-0" />
+                        <span className="text-xs">No cars added yet</span>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </Link>
