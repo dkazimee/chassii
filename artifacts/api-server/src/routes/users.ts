@@ -511,5 +511,22 @@ router.get("/notifications", requireAuth(), async (req, res) => {
   }
 });
 
+// POST /api/notifications/read-all — mark all notifications as read
+router.post("/notifications/read-all", requireAuth(), async (req, res) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
+    const me = await getOrCreateUser(clerkId);
+    const { notificationsTable } = await import("@workspace/db");
+    await db.update(notificationsTable)
+      .set({ isRead: true })
+      .where(eq(notificationsTable.userId, me.id));
+    return res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "Error marking notifications read");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export { getOrCreateUser, formatUser };
 export default router;

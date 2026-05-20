@@ -110,7 +110,7 @@ export default function NavBar() {
             </div>
 
             <SignedIn>
-              <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-gray-500">
+              <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-gray-500" onClick={() => setLocation("/notifications")}>
                 <span className="sr-only">View notifications</span>
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
