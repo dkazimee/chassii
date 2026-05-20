@@ -68,6 +68,54 @@ router.get("/events/cities", async (req, res) => {
   }
 });
 
+// Weather cache: key = "lat|lng|date"
+interface WeatherResult { weathercode: number; tempMax: number; tempMin: number; precipProb: number; }
+const weatherCache = new Map<string, { data: WeatherResult; expires: number }>();
+
+// GET /api/weather?lat=...&lng=...&date=YYYY-MM-DD
+router.get("/weather", async (req, res) => {
+  const { lat, lng, date } = req.query as Record<string, string>;
+  if (!lat || !lng || !date) return res.status(400).json({ error: "lat, lng, date required" });
+  const latN = parseFloat(lat), lngN = parseFloat(lng);
+  if (isNaN(latN) || isNaN(lngN)) return res.status(400).json({ error: "Invalid lat/lng" });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: "date must be YYYY-MM-DD" });
+
+  const key = `${latN.toFixed(3)}|${lngN.toFixed(3)}|${date}`;
+  const cached = weatherCache.get(key);
+  if (cached && cached.expires > Date.now()) return res.json(cached.data);
+
+  try {
+    const url = new URL("https://api.open-meteo.com/v1/forecast");
+    url.searchParams.set("latitude", String(latN));
+    url.searchParams.set("longitude", String(lngN));
+    url.searchParams.set("daily", "weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max");
+    url.searchParams.set("temperature_unit", "fahrenheit");
+    url.searchParams.set("timezone", "auto");
+    url.searchParams.set("start_date", date);
+    url.searchParams.set("end_date", date);
+
+    const r = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return res.status(502).json({ error: "Weather service unavailable" });
+
+    const json = await r.json() as any;
+    const daily = json.daily;
+    if (!daily?.weathercode?.length || daily.weathercode[0] === null || daily.weathercode[0] === undefined) {
+      return res.status(404).json({ error: "No forecast available for this date" });
+    }
+
+    const data: WeatherResult = {
+      weathercode: daily.weathercode[0],
+      tempMax: Math.round(daily.temperature_2m_max[0]),
+      tempMin: Math.round(daily.temperature_2m_min[0]),
+      precipProb: Math.round(daily.precipitation_probability_max[0] ?? 0),
+    };
+    weatherCache.set(key, { data, expires: Date.now() + 3 * 60 * 60 * 1000 });
+    return res.json(data);
+  } catch {
+    return res.status(502).json({ error: "Failed to fetch weather" });
+  }
+});
+
 // GET /api/geocode?q=city — resolve city name to lat/lng
 router.get("/geocode", async (req, res) => {
   const { q } = req.query as Record<string, string>;

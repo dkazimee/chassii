@@ -32,6 +32,76 @@ type ScrapedEvent = {
   organizer: { id: number; username: string; displayName: string; avatarUrl: string | null };
 };
 
+const WMO: Record<number, { label: string; emoji: string }> = {
+  0:  { label: "Clear sky",        emoji: "☀️"  },
+  1:  { label: "Mostly clear",     emoji: "🌤️" },
+  2:  { label: "Partly cloudy",    emoji: "⛅"  },
+  3:  { label: "Overcast",         emoji: "☁️"  },
+  45: { label: "Foggy",            emoji: "🌫️" },
+  48: { label: "Icy fog",          emoji: "🌫️" },
+  51: { label: "Light drizzle",    emoji: "🌦️" },
+  53: { label: "Drizzle",          emoji: "🌦️" },
+  55: { label: "Heavy drizzle",    emoji: "🌧️" },
+  61: { label: "Light rain",       emoji: "🌧️" },
+  63: { label: "Rain",             emoji: "🌧️" },
+  65: { label: "Heavy rain",       emoji: "🌧️" },
+  71: { label: "Light snow",       emoji: "🌨️" },
+  73: { label: "Snow",             emoji: "🌨️" },
+  75: { label: "Heavy snow",       emoji: "❄️"  },
+  77: { label: "Sleet",            emoji: "🌨️" },
+  80: { label: "Showers",          emoji: "🌦️" },
+  81: { label: "Showers",          emoji: "🌧️" },
+  82: { label: "Heavy showers",    emoji: "⛈️"  },
+  85: { label: "Snow showers",     emoji: "🌨️" },
+  86: { label: "Heavy snow showers", emoji: "❄️" },
+  95: { label: "Thunderstorm",     emoji: "⛈️"  },
+  96: { label: "Thunderstorm",     emoji: "⛈️"  },
+  99: { label: "Heavy thunderstorm", emoji: "⛈️" },
+};
+
+function wmoInfo(code: number) {
+  if (WMO[code]) return WMO[code];
+  const keys = Object.keys(WMO).map(Number).sort((a, b) => b - a);
+  for (const k of keys) if (k <= code) return WMO[k];
+  return { label: "Weather", emoji: "🌡️" };
+}
+
+type WeatherData = { weathercode: number; tempMax: number; tempMin: number; precipProb: number };
+
+function WeatherBadge({ lat, lng, date }: { lat: number; lng: number; date: string }) {
+  const day = date.slice(0, 10);
+  const { data, isLoading } = useQuery<WeatherData | null>({
+    queryKey: ["weather", lat.toFixed(3), lng.toFixed(3), day],
+    queryFn: async () => {
+      const r = await fetch(`/api/weather?lat=${lat}&lng=${lng}&date=${day}`);
+      if (!r.ok) return null;
+      return r.json();
+    },
+    staleTime: 3 * 60 * 60 * 1000,
+    retry: false,
+  });
+
+  if (isLoading) return (
+    <span className="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-50 border border-gray-100 px-2.5 py-0.5 rounded-full animate-pulse">
+      ⛅ --°
+    </span>
+  );
+  if (!data) return null;
+
+  const { emoji, label } = wmoInfo(data.weathercode);
+  return (
+    <span
+      title={`${label} · High ${data.tempMax}°F · Low ${data.tempMin}°F · ${data.precipProb}% precip`}
+      className="inline-flex items-center gap-1 text-sm font-medium text-sky-700 bg-sky-50 border border-sky-100 px-2.5 py-0.5 rounded-full cursor-default select-none"
+    >
+      {emoji} {data.tempMax}°<span className="text-sky-400 font-normal">/{data.tempMin}°</span>
+      {data.precipProb >= 30 && (
+        <span className="text-blue-400 font-normal text-xs ml-0.5">💧{data.precipProb}%</span>
+      )}
+    </span>
+  );
+}
+
 function SourceBadge({ source }: { source: string | null }) {
   if (!source) return null;
   if (source === "eventbrite") return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">Eventbrite</span>;
