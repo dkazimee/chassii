@@ -81,17 +81,17 @@ router.post("/admin/setup", requireAuth(), async (req, res) => {
   }
 });
 
-// GET /api/admin/me — check if current user is admin
-router.get("/admin/me", requireAuth(), async (req, res) => {
+// GET /api/admin/me — check if current user is admin (no requireAuth so it always returns JSON)
+router.get("/admin/me", async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
-    if (!clerkId) { res.status(401).json({ error: "Not authenticated" }); return; }
+    if (!clerkId) { res.json({ isAdmin: false }); return; }
     const user = await db.query.usersTable.findFirst({
       where: eq(usersTable.clerkId, clerkId),
     });
     res.json({ isAdmin: user?.isAdmin ?? false });
   } catch (err) {
-    res.status(500).json({ error: "Failed" });
+    res.json({ isAdmin: false });
   }
 });
 
